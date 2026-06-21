@@ -3,9 +3,11 @@ import { mockUsers, mockAppraisals, mockGoals, mockCycles } from './mockData';
 import type {
   Appraisal,
   Cycle,
+  EmployeeGoalCompletionRequest,
   Goal,
   GoalRequest,
   ManagerDashboardData,
+  SelfAssessmentRequest,
   TeamMember,
   TeamReport,
   User,
@@ -121,6 +123,91 @@ export const managerService = {
     return data;
   },
 
+  // The manager's own appraisal cycles, as someone else's report (e.g.
+  // Doremon reporting to Ripudaman Singh). Same data getDashboard() returns
+  // under myAppraisals, exposed separately so the "My Appraisals" page
+  // doesn't need to fetch the whole dashboard payload just for this list.
+  async getMyAppraisals(employeeId: string): Promise<Appraisal[]> {
+    if (USE_MOCK) {
+      return delay(appraisalsStore.filter((a) => a.employeeId === employeeId));
+    }
+
+    // Expected real contract: GET /api/manager/my-appraisals -> Appraisal[]
+    const { data } = await apiClient.get<Appraisal[]>('/manager/my-appraisals');
+    return data;
+  },
+
+  // Submits (or re-submits, while still in an editable stage) a self
+  // assessment. Moves PENDING/EMPLOYEE_DRAFT -> SELF_SUBMITTED. If the
+  // appraisal is already past that stage, this is a no-op rejection rather
+  // than silently overwriting a manager's in-progress review.
+  async submitSelfAssessment(appraisalId: string, payload: SelfAssessmentRequest): Promise<Appraisal> {
+    if (USE_MOCK) {
+      const current = appraisalsStore.find((a) => a.id === appraisalId);
+      if (!current) throw new Error('Appraisal not found');
+
+      const editableStatuses: Appraisal['status'][] = ['PENDING', 'EMPLOYEE_DRAFT'];
+      if (!editableStatuses.includes(current.status)) {
+        throw new Error('This appraisal has already moved past the self-assessment stage.');
+      }
+
+      let updated: Appraisal | undefined;
+      appraisalsStore = appraisalsStore.map((a) => {
+        if (a.id !== appraisalId) return a;
+        updated = {
+          ...a,
+          status: 'SELF_SUBMITTED',
+          selfRating: payload.selfRating,
+          rating: payload.selfRating,
+          whatWentWell: payload.whatWentWell,
+          whatToImprove: payload.whatToImprove,
+          keyAchievements: payload.keyAchievements,
+        };
+        return updated;
+      });
+
+      if (!updated) throw new Error('Appraisal not found');
+      return delay(updated);
+    }
+
+    // Expected real contract: POST /api/manager/my-appraisals/{id}/self-assessment
+    const { data } = await apiClient.post<Appraisal>(
+      `/manager/my-appraisals/${appraisalId}/self-assessment`,
+      payload
+    );
+    return data;
+  },
+
+  // Saves a self-assessment as a draft without submitting (status stays
+  // EMPLOYEE_DRAFT). Lets someone fill in partial answers and come back.
+  async saveSelfAssessmentDraft(appraisalId: string, payload: SelfAssessmentRequest): Promise<Appraisal> {
+    if (USE_MOCK) {
+      let updated: Appraisal | undefined;
+      appraisalsStore = appraisalsStore.map((a) => {
+        if (a.id !== appraisalId) return a;
+        updated = {
+          ...a,
+          status: 'EMPLOYEE_DRAFT',
+          selfRating: payload.selfRating,
+          rating: payload.selfRating,
+          whatWentWell: payload.whatWentWell,
+          whatToImprove: payload.whatToImprove,
+          keyAchievements: payload.keyAchievements,
+        };
+        return updated;
+      });
+      if (!updated) throw new Error('Appraisal not found');
+      return delay(updated);
+    }
+
+    // Expected real contract: PUT /api/manager/my-appraisals/{id}/draft
+    const { data } = await apiClient.put<Appraisal>(
+      `/manager/my-appraisals/${appraisalId}/draft`,
+      payload
+    );
+    return data;
+  },
+
   async createGoal(payload: GoalRequest): Promise<Goal> {
     if (USE_MOCK) {
       const appraisal = appraisalsStore.find((a) => a.id === payload.appraisalId);
@@ -173,6 +260,42 @@ export const managerService = {
 
     // Expected real contract: PATCH /api/manager/goals/{id}/confirm { completed }
     const { data } = await apiClient.patch<Goal>(`/manager/goals/${goalId}/confirm`, { completed });
+    return data;
+  },
+
+  // Goals assigned to the manager by their own manager (mirrors My Appraisals
+  // — the manager viewed as someone else's report).
+  async getMyGoals(employeeId: string): Promise<Goal[]> {
+    if (USE_MOCK) {
+      return delay(goalsStore.filter((g) => g.employeeId === employeeId));
+    }
+
+    // Expected real contract: GET /api/manager/my-goals -> Goal[]
+    const { data } = await apiClient.get<Goal[]>('/manager/my-goals');
+    return data;
+  },
+
+  // Employee-side response to a goal ("Did you complete this goal?" — Yes,
+  // completed / No, not done — with an optional note). Distinct from
+  // confirmGoalStatus, which is the manager's final word after this.
+  async respondToGoal(goalId: string, payload: EmployeeGoalCompletionRequest): Promise<Goal> {
+    if (USE_MOCK) {
+      let updated: Goal | undefined;
+      goalsStore = goalsStore.map((g) => {
+        if (g.id !== goalId) return g;
+        updated = {
+          ...g,
+          employeeResponse: payload.completed ? 'COMPLETED' : 'NOT_COMPLETED',
+          employeeNote: payload.note ?? null,
+        };
+        return updated;
+      });
+      if (!updated) throw new Error('Goal not found');
+      return delay(updated);
+    }
+
+    // Expected real contract: PATCH /api/manager/my-goals/{id}/respond
+    const { data } = await apiClient.patch<Goal>(`/manager/my-goals/${goalId}/respond`, payload);
     return data;
   },
 

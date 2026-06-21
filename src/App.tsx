@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { HrLayout } from '@/layouts/HrLayout';
 import { ManagerLayout } from '@/layouts/ManagerLayout';
+import { EmployeeLayout } from '@/layouts/EmployeeLayout';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { HrDashboardPage } from '@/pages/hr/HrDashboardPage';
 import { UsersPage } from '@/pages/hr/UsersPage';
@@ -14,7 +15,11 @@ import { ReportsPage } from '@/pages/hr/ReportsPage';
 import { ManagerDashboardPage } from '@/pages/manager/ManagerDashboard';
 import { MyTeamPage } from '@/pages/manager/MyTeamPage';
 import { TeamGoalsPage } from '@/pages/manager/TeamGoalsPage';
-import { ManagerComingSoonPage } from '@/pages/manager/ManagerComingSoonPage';
+import { TeamReportPage } from '@/pages/manager/TeamReportPage';
+import { MyAppraisalsPage } from '@/pages/manager/MyAppraisalsPage';
+import { MyGoalsPage } from '@/pages/manager/MyGoalsPage';
+import { EmployeeDashboardPage } from '@/pages/employee/EmployeeDashboardPage';
+import { EmployeeAppraisalsPage } from '@/pages/employee/EmployeeAppraisalsPage';
 
 export default function App() {
   return (
@@ -53,30 +58,23 @@ export default function App() {
               <Route path="dashboard" element={<ManagerDashboardPage />} />
               <Route path="team" element={<MyTeamPage />} />
               <Route path="goals" element={<TeamGoalsPage />} />
-              <Route
-                path="reports"
-                element={
-                  <ManagerComingSoonPage
-                    title="Team Report"
-                    description="Performance overview for your team by cycle"
-                  />
-                }
-              />
-              <Route
-                path="my-appraisals"
-                element={
-                  <ManagerComingSoonPage
-                    title="My Appraisals"
-                    description="Your own appraisal cycles — as an employee"
-                  />
-                }
-              />
-              <Route
-                path="my-goals"
-                element={
-                  <ManagerComingSoonPage title="My Goals" description="Goals assigned to you by your manager" />
-                }
-              />
+              <Route path="reports" element={<TeamReportPage />} />
+              <Route path="my-appraisals" element={<MyAppraisalsPage />} />
+              <Route path="my-goals" element={<MyGoalsPage />} />
+            </Route>
+
+            <Route
+              path="/employee"
+              element={
+                <ProtectedRoute>
+                  <EmployeeLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<EmployeeDashboardPage />} />
+              <Route path="appraisals" element={<EmployeeAppraisalsPage />} />
+              <Route path="goals" element={<div className="text-center py-10">Goals page coming soon</div>} />
             </Route>
 
             <Route path="/" element={<Navigate to="/login" replace />} />

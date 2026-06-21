@@ -89,6 +89,10 @@ export interface Appraisal {
   endDate?: string;
   selfRating?: number | null;
   managerRating?: number | null;
+  whatWentWell?: string | null;
+  whatToImprove?: string | null;
+  keyAchievements?: string | null;
+  managerComments?: string | null;
   /** @deprecated kept for the HR Reports page; equals selfRating for now */
   rating?: number | null;
 }
@@ -132,6 +136,17 @@ export interface GoalRequest {
 export interface EmployeeGoalCompletionRequest {
   completed: boolean;
   note?: string;
+}
+
+// Submitted by an employee when filling out their own self-assessment —
+// moves the appraisal from PENDING/EMPLOYEE_DRAFT to SELF_SUBMITTED.
+// Field names match the reference UI's form exactly: "What Went Well",
+// "What Could I Improve", "Key Achievements", "Self Rating".
+export interface SelfAssessmentRequest {
+  whatWentWell: string;
+  whatToImprove: string;
+  keyAchievements: string;
+  selfRating: number;
 }
 
 // The three creation modes mirror the reference UI's tabs on the Create
