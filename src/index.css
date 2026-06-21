@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-page: 250 249 252;       /* surface-50 */
+  --bg-card: 255 255 255;       /* surface-0 */
+  --bg-sidebar: 255 255 255;
+  --border-subtle: 233 230 242; /* surface-200 */
+  --text-primary: 30 23 46;
+  --text-secondary: 107 96 130;
+  --text-muted: 150 140 168;
+}
+
+.dark {
+  --bg-page: 13 8 21;           /* surface-950 */
+  --bg-card: 22 16 31;          /* surface-900 */
+  --bg-sidebar: 22 16 31;
+  --border-subtle: 51 41 71;
+  --text-primary: 240 237 249;
+  --text-secondary: 178 168 199;
+  --text-muted: 130 120 153;
+}
+
+html {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  background-color: rgb(var(--bg-page));
+  color: rgb(var(--text-primary));
+}
+
+/* Smooth theme transitions without animating layout-affecting properties */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+}
