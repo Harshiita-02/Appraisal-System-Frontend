@@ -2,6 +2,7 @@ import { apiClient } from './apiClient';
 import { mockAppraisals, mockGoals } from './mockData';
 import type {
   Appraisal,
+  EmployeeDashboardData,
   EmployeeGoalCompletionRequest,
   Goal,
   SelfAssessmentRequest,
@@ -26,7 +27,7 @@ export const employeeService = {
   // notifications. Notifications aren't modeled yet — kept at a small fixed
   // count for now matching the reference screenshot rather than a fake
   // notification feed nobody asked for.
-  async getDashboard(employeeId: string) {
+  async getDashboard(employeeId: string): Promise<EmployeeDashboardData> {
     if (USE_MOCK) {
       const myAppraisals = appraisalsStore.filter((a) => a.employeeId === employeeId);
       const myGoals = goalsStore.filter((g) => g.employeeId === employeeId);
@@ -43,7 +44,7 @@ export const employeeService = {
     }
 
     // Expected real contract: GET /api/employee/dashboard -> EmployeeDashboardData
-    const { data } = await apiClient.get('/employee/dashboard');
+    const { data } = await apiClient.get<EmployeeDashboardData>('/employee/dashboard');
     return data;
   },
 

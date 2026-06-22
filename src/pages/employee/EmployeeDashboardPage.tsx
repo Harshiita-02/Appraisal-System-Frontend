@@ -2,16 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { employeeService } from '@/services/employeeService';
-import type { Appraisal } from '@/types';
+import type { EmployeeDashboardData } from '@/types';
 import { StatCard } from '@/components/StatCard';
 import { StatusBadge } from '@/components/StatusBadge';
-
-interface DashboardData {
-  activeAppraisals: number;
-  goalsInProgress: number;
-  unreadNotifications: number;
-  appraisals: Appraisal[];
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -19,14 +12,14 @@ function formatDate(iso: string): string {
 
 export function EmployeeDashboardPage() {
   const { user } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [data, setData] = useState<EmployeeDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     employeeService
       .getDashboard(user.id)
-      .then((result) => setData(result as DashboardData))
+      .then(setData)
       .finally(() => setIsLoading(false));
   }, [user]);
 

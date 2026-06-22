@@ -36,13 +36,13 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-lg font-semibold text-white shadow-card">
-            P
+            A
           </div>
           <h1 className="text-xl font-semibold text-[rgb(var(--text-primary))]">
-            Appraisal System
+            Appraise
           </h1>
           <p className="mt-1 text-sm text-[rgb(var(--text-secondary))]">
-            Performance Management System
+            A Performance Management System
           </p>
         </div>
 

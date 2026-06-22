@@ -30,7 +30,7 @@ export function EmployeeLayout() {
       <aside className="flex w-64 flex-col border-r border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-sidebar))]">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-semibold text-white">
-            P
+            A
           </div>
           <span className="text-[15px] font-semibold text-[rgb(var(--text-primary))]">
             Appraisal System

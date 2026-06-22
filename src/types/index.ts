@@ -138,6 +138,13 @@ export interface EmployeeGoalCompletionRequest {
   note?: string;
 }
 
+export interface EmployeeDashboardData {
+  activeAppraisals: number;
+  goalsInProgress: number;
+  unreadNotifications: number;
+  appraisals: Appraisal[];
+}
+
 // Submitted by an employee when filling out their own self-assessment —
 // moves the appraisal from PENDING/EMPLOYEE_DRAFT to SELF_SUBMITTED.
 // Field names match the reference UI's form exactly: "What Went Well",

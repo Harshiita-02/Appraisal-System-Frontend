@@ -16,10 +16,13 @@ import { ManagerDashboardPage } from '@/pages/manager/ManagerDashboard';
 import { MyTeamPage } from '@/pages/manager/MyTeamPage';
 import { TeamGoalsPage } from '@/pages/manager/TeamGoalsPage';
 import { TeamReportPage } from '@/pages/manager/TeamReportPage';
-import { MyAppraisalsPage } from '@/pages/manager/MyAppraisalsPage';
-import { MyGoalsPage } from '@/pages/manager/MyGoalsPage';
+import { MyAppraisalsPage as ManagerMyAppraisalsPage } from '@/pages/manager/MyAppraisalsPage';
+import { MyGoalsPage as ManagerMyGoalsPage } from '@/pages/manager/MyGoalsPage';
+import { AppraisalGuidePage } from '@/pages/employee/AppraisalGuide';
 import { EmployeeDashboardPage } from '@/pages/employee/EmployeeDashboardPage';
-import { EmployeeAppraisalsPage } from '@/pages/employee/EmployeeAppraisalsPage';
+import { MyAppraisalsPage as EmployeeMyAppraisalsPage } from '@/pages/employee/MyAppraisalsPage';
+import { SelfAssessmentPage } from '@/pages/employee/SelfAssessmentPage';
+import { MyGoalsPage as EmployeeMyGoalsPage } from '@/pages/employee/MyGoalsPage';
 
 export default function App() {
   return (
@@ -59,8 +62,8 @@ export default function App() {
               <Route path="team" element={<MyTeamPage />} />
               <Route path="goals" element={<TeamGoalsPage />} />
               <Route path="reports" element={<TeamReportPage />} />
-              <Route path="my-appraisals" element={<MyAppraisalsPage />} />
-              <Route path="my-goals" element={<MyGoalsPage />} />
+              <Route path="my-appraisals" element={<ManagerMyAppraisalsPage />} />
+              <Route path="my-goals" element={<ManagerMyGoalsPage />} />
             </Route>
 
             <Route
@@ -72,9 +75,11 @@ export default function App() {
               }
             >
               <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="guide" element={<AppraisalGuidePage />} />
               <Route path="dashboard" element={<EmployeeDashboardPage />} />
-              <Route path="appraisals" element={<EmployeeAppraisalsPage />} />
-              <Route path="goals" element={<div className="text-center py-10">Goals page coming soon</div>} />
+              <Route path="appraisals" element={<EmployeeMyAppraisalsPage />} />
+              <Route path="appraisals/:id/self-assessment" element={<SelfAssessmentPage />} />
+              <Route path="goals" element={<EmployeeMyGoalsPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/login" replace />} />
