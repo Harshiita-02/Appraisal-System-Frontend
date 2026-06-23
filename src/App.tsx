@@ -32,14 +32,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
 
-            <Route
-              path="/hr"
-              element={
-                <ProtectedRoute>
-                  <HrLayout />
-                </ProtectedRoute>
-              }
-            >
+            <Route path="/hr"element={<ProtectedRoute><HrLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<HrDashboardPage />} />
               <Route path="users" element={<UsersPage />} />
@@ -49,14 +42,7 @@ export default function App() {
               <Route path="reports" element={<ReportsPage />} />
             </Route>
 
-            <Route
-              path="/manager"
-              element={
-                <ProtectedRoute>
-                  <ManagerLayout />
-                </ProtectedRoute>
-              }
-            >
+            <Route path="/manager"element={<ProtectedRoute>  <ManagerLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ManagerDashboardPage />} />
               <Route path="team" element={<MyTeamPage />} />
@@ -66,14 +52,7 @@ export default function App() {
               <Route path="my-goals" element={<ManagerMyGoalsPage />} />
             </Route>
 
-            <Route
-              path="/employee"
-              element={
-                <ProtectedRoute>
-                  <EmployeeLayout />
-                </ProtectedRoute>
-              }
-            >
+            <Route path="/employee"element={ <ProtectedRoute> <EmployeeLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="guide" element={<AppraisalGuidePage />} />
               <Route path="dashboard" element={<EmployeeDashboardPage />} />
