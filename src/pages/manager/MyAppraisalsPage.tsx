@@ -69,15 +69,15 @@ export function MyAppraisalsPage() {
     activeAppraisal?.status === 'PENDING' || activeAppraisal?.status === 'EMPLOYEE_DRAFT';
 
   async function handleSaveDraft() {
-    if (!activeAppraisal) return;
-    setIsSaving(true);
-    try {
-      await managerService.saveSelfAssessmentDraft(activeAppraisal.id, {
-        whatWentWell,
-        whatToImprove,
-        keyAchievements,
-        selfRating: selfRating || 1,
-      });
+  if (!activeAppraisal || !user) return;
+  setIsSaving(true);
+  try {
+    await managerService.saveSelfAssessmentDraft(activeAppraisal.id, {
+      whatWentWell,
+      whatToImprove,
+      keyAchievements,
+      selfRating: selfRating || 1,
+    }, user.id);
       closeModal();
       loadData();
     } catch {
@@ -88,7 +88,7 @@ export function MyAppraisalsPage() {
   }
 
   async function handleSubmit() {
-    if (!activeAppraisal) return;
+    if (!activeAppraisal || !user) return;
     setFormError(null);
 
     if (!whatWentWell.trim() || !whatToImprove.trim() || !keyAchievements.trim()) {
@@ -107,7 +107,7 @@ export function MyAppraisalsPage() {
         whatToImprove,
         keyAchievements,
         selfRating,
-      });
+      },user.id);
       closeModal();
       loadData();
     } catch (err) {

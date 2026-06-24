@@ -110,6 +110,11 @@ export const GOAL_STATUS_LABELS: Record<GoalStatus, string> = {
   COMPLETED: 'Completed',
 };
 
+export interface ManagerReviewRequest {
+  managerRating: number;
+  managerComments?: string;
+}
+
 export type GoalEmployeeResponse = 'PENDING' | 'COMPLETED' | 'NOT_COMPLETED';
 
 export interface Goal {
@@ -217,6 +222,7 @@ export interface TeamMember {
 }
 
 export interface TeamReportRow {
+  appraisalId: string | null; // NEW
   employeeId: string;
   employeeName: string;
   jobTitle: string;

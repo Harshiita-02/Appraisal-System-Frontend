@@ -59,16 +59,16 @@ export function MyGoalsPage() {
   }
 
   async function handleSubmit() {
-    if (!activeGoal || completed === null) return;
-    setIsSaving(true);
-    try {
-      await managerService.respondToGoal(activeGoal.id, { completed, note: note || undefined });
-      closeModal();
-      loadData();
-    } finally {
-      setIsSaving(false);
-    }
+  if (!activeGoal || completed === null || !user) return;
+  setIsSaving(true);
+  try {
+    await managerService.respondToGoal(activeGoal.id, { completed, note: note || undefined }, user.id);
+    closeModal();
+    loadData();
+  } finally {
+    setIsSaving(false);
   }
+}
 
   const alreadyResponded = activeGoal?.employeeResponse !== 'PENDING';
 

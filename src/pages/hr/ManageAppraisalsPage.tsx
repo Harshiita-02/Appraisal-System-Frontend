@@ -27,6 +27,13 @@ export function ManageAppraisalsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Appraisal | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Tracks which appraisal rows currently have an advance request in
+  // flight, so the button can be disabled until it resolves. Without this,
+  // rapid/double clicks could fire multiple real one-step advances before
+  // the UI re-rendered, which looked like a single click skipping several
+  // stages.
+  const [advancingIds, setAdvancingIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     loadData();
   }, []);
@@ -45,8 +52,8 @@ export function ManageAppraisalsPage() {
   const filteredAppraisals = useMemo(() => {
     return appraisals.filter((a) => {
       if (statusFilter !== 'ALL' && a.status !== statusFilter) return false;
-      if (departmentFilter !== 'ALL' && a.departmentId !== departmentFilter) return false;
-      if (cycleFilter !== 'ALL' && a.cycleId !== cycleFilter) return false;
+      if (departmentFilter !== 'ALL' && String(a.departmentId) !== departmentFilter) return false;
+if (cycleFilter !== 'ALL' && String(a.cycleId) !== cycleFilter) return false;
       if (search.trim()) {
         const q = search.trim().toLowerCase();
         const haystack = `${a.employeeName} ${a.managerName} ${a.cycle}`.toLowerCase();
@@ -67,12 +74,21 @@ export function ManageAppraisalsPage() {
   }
 
   async function handleAdvance(appraisal: Appraisal) {
+    if (advancingIds.has(appraisal.id)) return;
+
     setActionError(null);
+    setAdvancingIds((prev) => new Set(prev).add(appraisal.id));
     try {
-      await hrService.advanceAppraisalStatus(appraisal.id);
-      loadData();
+      await hrService.advanceAppraisalStatus(appraisal.id, appraisal.status);
+      await loadData();
     } catch {
       setActionError(`Couldn't advance ${appraisal.employeeName}'s appraisal. It may already be complete.`);
+    } finally {
+      setAdvancingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(appraisal.id);
+        return next;
+      });
     }
   }
 
@@ -198,6 +214,7 @@ export function ManageAppraisalsPage() {
               <tbody>
                 {filteredAppraisals.map((a) => {
                   const isFinal = a.status === 'ACKNOWLEDGED';
+                  const isAdvancing = advancingIds.has(a.id);
                   return (
                     <tr
                       key={a.id}
@@ -220,11 +237,11 @@ export function ManageAppraisalsPage() {
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => handleAdvance(a)}
-                            disabled={isFinal}
+                            disabled={isFinal || isAdvancing}
                             title={isFinal ? 'Already acknowledged' : 'Advance to next stage'}
                             className="rounded-lg border border-[rgb(var(--border-subtle))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--text-primary))] hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            Advance
+                            {isAdvancing ? 'Advancing…' : 'Advance'}
                           </button>
                           <button
                             onClick={() => setDeleteTarget(a)}

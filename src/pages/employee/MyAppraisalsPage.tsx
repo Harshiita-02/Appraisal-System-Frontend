@@ -6,6 +6,18 @@ import { APPRAISAL_STATUS_LABELS, type Appraisal, type AppraisalStatus, type Cyc
 import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
 
+// Statuses meaningful to filter by from the employee's own point of view.
+// MANAGER_DRAFT and MANAGER_REVIEWED are purely internal manager-side
+// states — an appraisal can technically sit there, but an employee never
+// causes that transition and rarely thinks to filter for it by that name.
+const EMPLOYEE_FILTERABLE_STATUSES: AppraisalStatus[] = [
+  'PENDING',
+  'EMPLOYEE_DRAFT',
+  'SELF_SUBMITTED',
+  'APPROVED',
+  'ACKNOWLEDGED',
+];
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -65,9 +77,9 @@ export function MyAppraisalsPage() {
             className="rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           >
             <option value="ALL">All statuses</option>
-            {Object.entries(APPRAISAL_STATUS_LABELS).map(([value, label]) => (
+            {EMPLOYEE_FILTERABLE_STATUSES.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {APPRAISAL_STATUS_LABELS[value]}
               </option>
             ))}
           </select>

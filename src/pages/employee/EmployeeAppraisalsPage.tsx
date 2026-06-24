@@ -7,6 +7,18 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
 import { Icons } from '@/components/Icons';
 
+// Statuses meaningful to filter by from the employee's own point of view.
+// MANAGER_DRAFT and MANAGER_REVIEWED are purely internal manager-side
+// states — an appraisal can technically sit there, but an employee never
+// causes that transition and rarely thinks to filter for it by that name.
+const EMPLOYEE_FILTERABLE_STATUSES: AppraisalStatus[] = [
+  'PENDING',
+  'EMPLOYEE_DRAFT',
+  'SELF_SUBMITTED',
+  'APPROVED',
+  'ACKNOWLEDGED',
+];
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -20,8 +32,9 @@ export function EmployeeAppraisalsPage() {
 
   const [activeAppraisal, setActiveAppraisal] = useState<Appraisal | null>(null);
   const [selfRating, setSelfRating] = useState(0);
-  const [achievements, setAchievements] = useState('');
-  const [comments, setComments] = useState('');
+  const [whatWentWell, setWhatWentWell] = useState('');
+  const [whatToImprove, setWhatToImprove] = useState('');
+  const [keyAchievements, setKeyAchievements] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -48,8 +61,9 @@ export function EmployeeAppraisalsPage() {
   function openAssessmentModal(appraisal: Appraisal) {
     setActiveAppraisal(appraisal);
     setSelfRating(appraisal.selfRating ?? 0);
-    setAchievements(appraisal.achievements ?? '');
-    setComments(appraisal.comments ?? '');
+    setWhatWentWell(appraisal.whatWentWell ?? '');
+    setWhatToImprove(appraisal.whatToImprove ?? '');
+    setKeyAchievements(appraisal.keyAchievements ?? '');
     setFormError(null);
   }
 
@@ -62,14 +76,19 @@ export function EmployeeAppraisalsPage() {
     activeAppraisal?.status === 'PENDING' || activeAppraisal?.status === 'EMPLOYEE_DRAFT';
 
   async function handleSaveDraft() {
-    if (!activeAppraisal) return;
+    if (!activeAppraisal || !user) return;
     setIsSaving(true);
     try {
-      await employeeService.saveSelfAssessmentDraft(activeAppraisal.id, {
-        selfRating: selfRating || 1,
-        achievements,
-        comments,
-      });
+      await employeeService.saveSelfAssessmentDraft(
+        activeAppraisal.id,
+        {
+          selfRating: selfRating || 1,
+          whatWentWell,
+          whatToImprove,
+          keyAchievements,
+        },
+        user.id
+      );
       closeModal();
       loadData();
     } catch {
@@ -80,7 +99,7 @@ export function EmployeeAppraisalsPage() {
   }
 
   async function handleSubmit() {
-    if (!activeAppraisal) return;
+    if (!activeAppraisal || !user) return;
     setFormError(null);
 
     if (selfRating < 1) {
@@ -90,11 +109,16 @@ export function EmployeeAppraisalsPage() {
 
     setIsSaving(true);
     try {
-      await employeeService.submitSelfAssessment(activeAppraisal.id, {
-        selfRating,
-        achievements,
-        comments,
-      });
+      await employeeService.submitSelfAssessment(
+        activeAppraisal.id,
+        {
+          selfRating,
+          whatWentWell,
+          whatToImprove,
+          keyAchievements,
+        },
+        user.id
+      );
       closeModal();
       loadData();
     } catch (err) {
@@ -128,9 +152,9 @@ export function EmployeeAppraisalsPage() {
           className="rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         >
           <option value="ALL">All statuses</option>
-          {Object.entries(APPRAISAL_STATUS_LABELS).map(([value, label]) => (
+          {EMPLOYEE_FILTERABLE_STATUSES.map((value) => (
             <option key={value} value={value}>
-              {label}
+              {APPRAISAL_STATUS_LABELS[value]}
             </option>
           ))}
         </select>
@@ -226,11 +250,11 @@ export function EmployeeAppraisalsPage() {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
-              Achievements
+              What Went Well
             </label>
             <textarea
-              value={achievements}
-              onChange={(e) => setAchievements(e.target.value)}
+              value={whatWentWell}
+              onChange={(e) => setWhatWentWell(e.target.value)}
               disabled={!isEditable}
               rows={3}
               placeholder="What did you accomplish this cycle?"
@@ -240,11 +264,25 @@ export function EmployeeAppraisalsPage() {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
-              Comments
+              What Could I Improve
             </label>
             <textarea
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
+              value={whatToImprove}
+              onChange={(e) => setWhatToImprove(e.target.value)}
+              disabled={!isEditable}
+              rows={3}
+              placeholder="What would you do differently?"
+              className="w-full resize-none rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
+              Key Achievements
+            </label>
+            <textarea
+              value={keyAchievements}
+              onChange={(e) => setKeyAchievements(e.target.value)}
               disabled={!isEditable}
               rows={3}
               placeholder="Anything else you'd like your manager to know?"

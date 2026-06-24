@@ -107,15 +107,7 @@ export function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-[rgb(var(--text-muted))]">
-          Mock auth — try{' '}
-          <span className="font-medium text-[rgb(var(--text-secondary))]">
-            ripudaman@company.com
-          </span>{' '}
-          (HR) or{' '}
-          <span className="font-medium text-[rgb(var(--text-secondary))]">doremon@work.com</span>{' '}
-          (Manager) with any password.
-        </p>
+      
       </div>
     </div>
   );

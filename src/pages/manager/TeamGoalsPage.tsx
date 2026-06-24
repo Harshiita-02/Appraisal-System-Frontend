@@ -76,7 +76,8 @@ export function TeamGoalsPage() {
 
     setIsSaving(true);
     try {
-      await managerService.createGoal(form);
+      if (!user) return;
+await managerService.createGoal(form, user.id);
       closeModal();
       setSuccessMessage('Goal created');
       loadData();
@@ -88,12 +89,12 @@ export function TeamGoalsPage() {
     }
   }
 
-  async function confirmDelete() {
-    if (!deleteTarget) return;
-    await managerService.deleteGoal(deleteTarget.id);
-    setDeleteTarget(null);
-    loadData();
-  }
+ async function confirmDelete() {
+  if (!deleteTarget || !user) return;
+  await managerService.deleteGoal(deleteTarget.id, user.id);
+  setDeleteTarget(null);
+  loadData();
+}
 
   if (isLoading) {
     return (

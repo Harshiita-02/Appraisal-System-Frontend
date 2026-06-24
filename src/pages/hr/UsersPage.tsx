@@ -17,6 +17,32 @@ const EMPTY_FORM: UserRequest = {
   managerId: '',
 };
 
+// Pulls a human-readable message out of an Axios error. Spring's default
+// error body (and most custom @ExceptionHandler responses) is shaped like
+// { message: "...", error: "...", status: 400 } — this checks the common
+// field names backends use and falls back to a generic string only if none
+// of them are present, instead of always discarding the real reason.
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const response = (err as { response?: { data?: unknown } }).response;
+    const data = response?.data;
+    if (data && typeof data === 'object') {
+      const body = data as Record<string, unknown>;
+      const candidate = body.message ?? body.error ?? body.detail;
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate;
+      }
+    }
+    if (typeof data === 'string' && data.trim()) {
+      return data;
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+}
+
 export function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -29,6 +55,8 @@ export function UsersPage() {
   const [form, setForm] = useState<UserRequest>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -56,8 +84,6 @@ export function UsersPage() {
     });
   }, [users, search, roleFilter]);
 
-  // Potential managers: anyone who isn't the user currently being edited,
-  // so a user can't be set as their own manager.
   const managerOptions = useMemo(
     () => users.filter((u) => u.id !== editingUserId),
     [users, editingUserId]
@@ -119,16 +145,23 @@ export function UsersPage() {
       }
       closeModal();
       loadData();
-    } catch {
-      setFormError('Something went wrong saving this user. Please try again.');
+    } catch (err) {
+      setFormError(extractErrorMessage(err, 'Something went wrong saving this user. Please try again.'));
     } finally {
       setIsSaving(false);
     }
   }
 
   async function handleToggleStatus(user: User) {
-    await hrService.deactivateUser(user.id);
-    loadData();
+    setActionError(null);
+    try {
+      await hrService.deactivateUser(user.id);
+      loadData();
+    } catch (err) {
+      setActionError(
+        extractErrorMessage(err, `Couldn't update ${user.name}'s status. Please try again.`)
+      );
+    }
   }
 
   if (isLoading) {
@@ -156,6 +189,12 @@ export function UsersPage() {
           Add User
         </button>
       </div>
+
+      {actionError && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+          {actionError}
+        </p>
+      )}
 
       <div className="rounded-xl border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] shadow-card">
         <div className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--border-subtle))] p-4">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import { employeeService } from '@/services/employeeService';
 import type { Appraisal } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -13,6 +14,7 @@ function formatDate(iso: string): string {
 export function SelfAssessmentPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [appraisal, setAppraisal] = useState<Appraisal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,9 +30,9 @@ export function SelfAssessmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     employeeService
-      .getAppraisalById(id)
+      .getAppraisalById(id, user.id)
       .then((a) => {
         setAppraisal(a);
         setWhatWentWell(a.whatWentWell ?? '');
@@ -39,21 +41,25 @@ export function SelfAssessmentPage() {
         setSelfRating(a.selfRating ?? 0);
       })
       .finally(() => setIsLoading(false));
-  }, [id]);
+  }, [id, user]);
 
   const isEditable = appraisal?.status === 'PENDING' || appraisal?.status === 'EMPLOYEE_DRAFT';
 
   async function handleSaveDraft() {
-    if (!appraisal) return;
+    if (!appraisal || !user) return;
     setFormError(null);
     setIsSavingDraft(true);
     try {
-      const updated = await employeeService.saveSelfAssessmentDraft(appraisal.id, {
-        whatWentWell,
-        whatToImprove,
-        keyAchievements,
-        selfRating: selfRating || 1,
-      });
+      const updated = await employeeService.saveSelfAssessmentDraft(
+        appraisal.id,
+        {
+          whatWentWell,
+          whatToImprove,
+          keyAchievements,
+          selfRating: selfRating || 1,
+        },
+        user.id
+      );
       setAppraisal(updated);
       setDraftSaved(true);
       setTimeout(() => setDraftSaved(false), 2500);
@@ -65,7 +71,7 @@ export function SelfAssessmentPage() {
   }
 
   async function handleSubmit() {
-    if (!appraisal) return;
+    if (!appraisal || !user) return;
     setFormError(null);
 
     if (!whatWentWell.trim() || !whatToImprove.trim() || !keyAchievements.trim()) {
@@ -79,12 +85,16 @@ export function SelfAssessmentPage() {
 
     setIsSubmitting(true);
     try {
-      await employeeService.submitSelfAssessment(appraisal.id, {
-        whatWentWell,
-        whatToImprove,
-        keyAchievements,
-        selfRating,
-      });
+      await employeeService.submitSelfAssessment(
+        appraisal.id,
+        {
+          whatWentWell,
+          whatToImprove,
+          keyAchievements,
+          selfRating,
+        },
+        user.id
+      );
       navigate('/employee/appraisals');
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not submit. Please try again.');
