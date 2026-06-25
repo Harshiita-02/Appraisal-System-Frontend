@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/employee/dashboard', label: 'Dashboard', icon: Icons.Dashboard },
   { to: '/employee/appraisals', label: 'My Appraisals', icon: Icons.Clipboard },
   { to: '/employee/goals', label: 'My Goals', icon: Icons.Target },
+  { to: '/employee/reviews', label: 'My Reviews', icon: Icons.Star },
 ];
 
 export function EmployeeLayout() {

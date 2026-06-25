@@ -12,9 +12,6 @@ import type {
   TeamReport,
 } from '@/types';
 
-// ✅ Mock is OFF — all calls go to the real Spring Boot backend
-const USE_MOCK = false;
-
 export const managerService = {
 
   async getDashboard(managerId: string): Promise<ManagerDashboardData> {

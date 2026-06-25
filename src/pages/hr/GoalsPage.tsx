@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { managerService } from '@/services/managerService';
+import { hrService } from '@/services/hrService';
 import { GOAL_STATUS_LABELS, type Appraisal, type Goal, type GoalRequest, type GoalStatus } from '@/types';
 import { Modal } from '@/components/Modal';
 import { Icons } from '@/components/Icons';
@@ -17,7 +17,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function TeamGoalsPage() {
+export function GoalsPage() {
   const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
@@ -31,8 +31,6 @@ export function TeamGoalsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Confirm-goal modal state — lets the manager finalize a goal's real
-  // GoalStatus after the employee has claimed it's done (or not done).
   const [confirmTarget, setConfirmTarget] = useState<Goal | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -44,7 +42,7 @@ export function TeamGoalsPage() {
   function loadData() {
     if (!user) return;
     setIsLoading(true);
-    Promise.all([managerService.getGoals(user.id), managerService.getAssignableAppraisals(user.id)])
+    Promise.all([hrService.getGoals(), hrService.getAssignableAppraisals()])
       .then(([goalList, appraisalList]) => {
         setGoals(goalList);
         setAppraisals(appraisalList);
@@ -83,9 +81,9 @@ export function TeamGoalsPage() {
     setIsSaving(true);
     try {
       if (!user) return;
-      await managerService.createGoal(form, user.id);
+      await hrService.createGoal(form, user.id);
       closeModal();
-      setSuccessMessage('Goal created');
+      setSuccessMessage('Goal assigned');
       loadData();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch {
@@ -97,14 +95,11 @@ export function TeamGoalsPage() {
 
   async function confirmDelete() {
     if (!deleteTarget || !user) return;
-    await managerService.deleteGoal(deleteTarget.id, user.id);
+    await hrService.deleteGoal(deleteTarget.id, user.id);
     setDeleteTarget(null);
     loadData();
   }
 
-  // A goal is ready for the manager's confirmation once the employee has
-  // actually responded (claimed completed or not completed) — there's
-  // nothing to confirm while they're still PENDING.
   function needsConfirmation(goal: Goal): boolean {
     return goal.employeeResponse !== 'PENDING' && goal.status !== 'COMPLETED';
   }
@@ -124,7 +119,7 @@ export function TeamGoalsPage() {
     setIsConfirming(true);
     setConfirmError(null);
     try {
-      await managerService.confirmGoalStatus(confirmTarget.id, completed, user.id);
+      await hrService.confirmGoalStatus(confirmTarget.id, completed, user.id);
       closeConfirmModal();
       loadData();
     } catch (err) {
@@ -148,9 +143,9 @@ export function TeamGoalsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[rgb(var(--text-primary))]">Team Goals</h1>
+          <h1 className="text-xl font-semibold text-[rgb(var(--text-primary))]">Goals</h1>
           <p className="mt-1 text-sm text-[rgb(var(--text-secondary))]">
-            Manage goals for your team members
+            Assign goals to managers and track their progress
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -163,18 +158,18 @@ export function TeamGoalsPage() {
           <button
             onClick={openCreateModal}
             disabled={appraisals.length === 0}
-            title={appraisals.length === 0 ? 'No team appraisals to attach a goal to yet' : undefined}
+            title={appraisals.length === 0 ? 'No manager appraisals available yet' : undefined}
             className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Icons.Plus className="h-4 w-4" />
-            Add Goal
+            Assign Goal
           </button>
         </div>
       </div>
 
       {goals.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] p-10 text-center text-sm text-[rgb(var(--text-muted))]">
-          No goals yet. Add a goal for a team member.
+          No goals assigned yet.
         </div>
       ) : (
         <div className="rounded-xl border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] shadow-card">
@@ -182,11 +177,11 @@ export function TeamGoalsPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-[rgb(var(--border-subtle))] text-xs uppercase tracking-wide text-[rgb(var(--text-muted))]">
-                  <th className="px-4 py-3 font-medium">Employee / Cycle</th>
+                  <th className="px-4 py-3 font-medium">Manager / Cycle</th>
                   <th className="px-4 py-3 font-medium">Goal</th>
                   <th className="px-4 py-3 font-medium">Due Date</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Employee Response</th>
+                  <th className="px-4 py-3 font-medium">Response</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -205,9 +200,7 @@ export function TeamGoalsPage() {
                         <div className="text-xs text-[rgb(var(--text-muted))]">{goal.description}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-[rgb(var(--text-secondary))]">
-                      {formatDate(goal.dueDate)}
-                    </td>
+                    <td className="px-4 py-3 text-[rgb(var(--text-secondary))]">{formatDate(goal.dueDate)}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${GOAL_STATUS_STYLES[goal.status]}`}
@@ -217,6 +210,7 @@ export function TeamGoalsPage() {
                     </td>
                     <td className="px-4 py-3 text-[rgb(var(--text-secondary))]">
                       {goal.employeeResponse === 'PENDING' && 'Not responded'}
+                      {goal.employeeResponse === 'IN_PROGRESS' && 'In progress'}
                       {goal.employeeResponse === 'COMPLETED' && 'Marked as completed'}
                       {goal.employeeResponse === 'NOT_COMPLETED' && 'Marked as not done'}
                     </td>
@@ -247,7 +241,7 @@ export function TeamGoalsPage() {
         </div>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Add Goal">
+      <Modal isOpen={isModalOpen} onClose={closeModal} title="Assign Goal">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
@@ -274,7 +268,7 @@ export function TeamGoalsPage() {
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="e.g. Complete React course"
+              placeholder="e.g. Lead the Q3 delivery roadmap"
               className="w-full rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
           </div>
@@ -376,7 +370,7 @@ export function TeamGoalsPage() {
           <div className="flex justify-end gap-2">
             <button
               onClick={closeConfirmModal}
-              className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 dark:hover:bg-surface-800"
+              className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-surface-800"
             >
               Cancel
             </button>

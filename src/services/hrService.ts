@@ -10,10 +10,11 @@ import type {
   CreateAppraisalRequest,
   AppraisalStatus,
   CycleReport,
+  EmployeeGoalCompletionRequest,
+  Goal,
+  GoalRequest,
 } from '@/types';
 import { APPRAISAL_STATUS_ORDER } from '@/types';
-
-const USE_MOCK = false;
 
 export const hrService = {
   async getDashboard(): Promise<DashboardData> {
@@ -113,14 +114,61 @@ export const hrService = {
     return data;
   },
 
-  async deleteAppraisal(appraisalId: string): Promise<void> {
-    await apiClient.delete(`/hr/appraisals/${appraisalId}`);
-  },
+  async deleteUser(userId: string): Promise<void> {
+  await apiClient.delete(`/hr/users/${userId}`);
+},
 
   async getCycleReport(cycleId: string): Promise<CycleReport> {
     const { data } = await apiClient.get<CycleReport>('/hr/reports', {
       params: { cycleId },
     });
+    return data;
+  },
+
+  // ---- Goals -------------------------------------------------------------
+
+  async getGoals(): Promise<Goal[]> {
+    const { data } = await apiClient.get<Goal[]>('/hr/goals');
+    return data;
+  },
+
+  async getAssignableAppraisals(): Promise<Appraisal[]> {
+    const { data } = await apiClient.get<Appraisal[]>('/hr/appraisals/assignable');
+    return data;
+  },
+
+  async createGoal(payload: GoalRequest, hrId: string): Promise<Goal> {
+    const { data } = await apiClient.post<Goal>('/hr/goals', payload, {
+      params: { hrId },
+    });
+    return data;
+  },
+
+  async deleteGoal(goalId: string, hrId: string): Promise<void> {
+    await apiClient.delete(`/hr/goals/${goalId}`, {
+      params: { hrId },
+    });
+  },
+
+  async confirmGoalStatus(goalId: string, completed: boolean, hrId: string): Promise<Goal> {
+    const { data } = await apiClient.patch<Goal>(
+      `/hr/goals/${goalId}/confirm`,
+      { completed },
+      { params: { hrId } }
+    );
+    return data;
+  },
+
+  async respondToGoal(
+    goalId: string,
+    payload: EmployeeGoalCompletionRequest,
+    hrId: string
+  ): Promise<Goal> {
+    const { data } = await apiClient.patch<Goal>(
+      `/hr/goals/${goalId}/respond`,
+      payload,
+      { params: { hrId } }
+    );
     return data;
   },
 };

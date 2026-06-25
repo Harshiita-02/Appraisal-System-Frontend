@@ -115,7 +115,7 @@ export interface ManagerReviewRequest {
   managerComments?: string;
 }
 
-export type GoalEmployeeResponse = 'PENDING' | 'COMPLETED' | 'NOT_COMPLETED';
+export type GoalEmployeeResponse = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_COMPLETED';
 
 export interface Goal {
   id: string;
@@ -139,7 +139,7 @@ export interface GoalRequest {
 }
 
 export interface EmployeeGoalCompletionRequest {
-  completed: boolean;
+  completed: boolean | null;
   note?: string;
 }
 

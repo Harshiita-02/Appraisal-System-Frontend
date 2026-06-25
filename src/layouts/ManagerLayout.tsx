@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/manager/reports', label: 'Team Report', icon: Icons.Chart },
   { to: '/manager/my-appraisals', label: 'My Appraisals', icon: Icons.Clipboard },
   { to: '/manager/my-goals', label: 'My Goals', icon: Icons.Target },
+  { to: '/manager/reviews', label: 'Reviews', icon: Icons.Star },
 ];
 
 export function ManagerLayout() {

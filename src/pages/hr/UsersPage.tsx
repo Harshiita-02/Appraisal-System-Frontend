@@ -152,22 +152,20 @@ export function UsersPage() {
     }
   }
 
-  async function handleToggleStatus(user: User) {
-    setActionError(null);
-    try {
-      await hrService.deactivateUser(user.id);
-      loadData();
-    } catch (err) {
-      setActionError(
-        extractErrorMessage(err, `Couldn't update ${user.name}'s status. Please try again.`)
-      );
-    }
+  async function handleDeleteUser(user: User) {
+  setActionError(null);
+  try {
+    await hrService.deleteUser(user.id);
+    loadData();
+  } catch (err) {
+    setActionError(extractErrorMessage(err, `Couldn't delete ${user.name}. They may have active appraisals.`));
   }
+}
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20 text-sm text-[rgb(var(--text-muted))]">
-        Loading users…
+        Loading Employees...
       </div>
     );
   }
@@ -176,9 +174,9 @@ export function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[rgb(var(--text-primary))]">Users</h1>
+          <h1 className="text-xl font-semibold text-[rgb(var(--text-primary))]">Employees</h1>
           <p className="mt-1 text-sm text-[rgb(var(--text-secondary))]">
-            Manage all system users
+            Manage all system employess
           </p>
         </div>
         <button
@@ -289,7 +287,7 @@ export function UsersPage() {
                           <Icons.Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleToggleStatus(u)}
+                          onClick={() => handleDeleteUser(u)}
                           aria-label={u.status === 'ACTIVE' ? `Deactivate ${u.name}` : `Activate ${u.name}`}
                           className="rounded-lg p-1.5 text-[rgb(var(--text-secondary))] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                         >

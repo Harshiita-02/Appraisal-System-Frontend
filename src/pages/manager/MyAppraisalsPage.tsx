@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { managerService } from '@/services/managerService';
-import { APPRAISAL_STATUS_LABELS, type Appraisal, type AppraisalStatus, type Cycle } from '@/types';
+import { type Appraisal, type Cycle } from '@/types';
 import { Modal } from '@/components/Modal';
 import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
 import { Icons } from '@/components/Icons';
+
+type ManagerStatusFilter = 'ALL' | 'PENDING' | 'MANAGER_DRAFT' | 'APPROVED' | 'ACKNOWLEDGED';
+
+const STATUS_FILTER_OPTIONS: Array<{ value: ManagerStatusFilter; label: string }> = [
+  { value: 'ALL', label: 'All statuses' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'MANAGER_DRAFT', label: 'Manager Draft' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'ACKNOWLEDGED', label: 'Acknowledged' },
+];
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -17,7 +27,7 @@ export function MyAppraisalsPage() {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [statusFilter, setStatusFilter] = useState<AppraisalStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<ManagerStatusFilter>('ALL');
   const [cycleFilter, setCycleFilter] = useState<string>('ALL');
 
   const [activeAppraisal, setActiveAppraisal] = useState<Appraisal | null>(null);
@@ -138,13 +148,12 @@ export function MyAppraisalsPage() {
         <div className="flex items-center gap-2">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as AppraisalStatus | 'ALL')}
+            onChange={(e) => setStatusFilter(e.target.value as ManagerStatusFilter)}
             className="rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           >
-            <option value="ALL">All statuses</option>
-            {Object.entries(APPRAISAL_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
+            {STATUS_FILTER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>

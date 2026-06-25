@@ -1,31 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { managerService } from '@/services/managerService';
-import { apiClient } from '@/services/apiClient';
-import type { Cycle, TeamReport } from '@/types';
+import type { Cycle, TeamReport, TeamReportRow } from '@/types';
 import { StatCard } from '@/components/StatCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
 import { Modal } from '@/components/Modal';
 import { Icons } from '@/components/Icons';
-
-// The row shape coming back from the backend team report
-interface TeamRow {
-  employeeId: string;
-  employeeName: string;
-  jobTitle: string;
-  status: string;
-  selfRating?: number | null;
-  managerRating?: number | null;
-  goalsCompleted: number;
-  goalsTotal: number;
-  appraisalId?: string | null;   // needed to submit review
-  selfAssessment?: {
-    whatWentWell?: string;
-    whatToImprove?: string;
-    keyAchievements?: string;
-  } | null;
-}
 
 export function TeamReportPage() {
   const { user } = useAuth();
@@ -36,11 +17,11 @@ export function TeamReportPage() {
   const [isLoadingReport, setIsLoadingReport] = useState(false);
 
   // Review modal state
-  const [reviewRow, setReviewRow] = useState<TeamRow | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<TeamReportRow | null>(null);
   const [managerRating, setManagerRating] = useState(0);
-  const [finalComment, setFinalComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [managerComments, setManagerComments] = useState('');
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isSavingReview, setIsSavingReview] = useState(false);
 
   useEffect(() => {
     managerService.getCycles().then((list) => {
@@ -51,63 +32,68 @@ export function TeamReportPage() {
   }, []);
 
   useEffect(() => {
+    loadReport();
+  }, [user, selectedCycleId]);
+
+  function loadReport() {
     if (!user || !selectedCycleId) return;
     setIsLoadingReport(true);
     managerService
       .getTeamReport(user.id, selectedCycleId)
       .then(setReport)
       .finally(() => setIsLoadingReport(false));
-  }, [user, selectedCycleId]);
+  }
 
-  function openReviewModal(row: TeamRow) {
-    setReviewRow(row);
-    setManagerRating(0);
-    setFinalComment('');
+  // Only rows where the employee has actually submitted their side (or the
+  // manager already started a review draft) are reviewable. Uses the real
+  // 7-stage workflow statuses, not the old SUBMITTED/REVIEWED pair.
+  function canReview(row: TeamReportRow): boolean {
+    return (
+      row.appraisalId != null &&
+      (row.status === 'SELF_SUBMITTED' || row.status === 'MANAGER_DRAFT')
+    );
+  }
+
+  function openReviewModal(row: TeamReportRow) {
+    setReviewTarget(row);
+    setManagerRating(row.managerRating ?? 0);
+    setManagerComments('');
     setReviewError(null);
   }
 
   function closeReviewModal() {
-    setReviewRow(null);
+    setReviewTarget(null);
     setReviewError(null);
   }
 
-  async function handleSubmitReview() {
-    if (!reviewRow || !user) return;
+  async function handleSaveReview(submit: boolean) {
+    if (!reviewTarget || !reviewTarget.appraisalId || !user) return;
+    setReviewError(null);
 
-    if (managerRating < 1) {
+    if (submit && managerRating < 1) {
       setReviewError('Please select a rating before submitting.');
       return;
     }
 
-    if (!reviewRow.appraisalId) {
-      setReviewError('Cannot find appraisal ID for this employee. Please refresh and try again.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setReviewError(null);
-
+    setIsSavingReview(true);
     try {
-      await apiClient.post(
-        `/manager/appraisals/${reviewRow.appraisalId}/review`,
-        { managerRating, finalComment },
-        { params: { managerId: user.id } }
+      // Uses managerService.reviewTeamAppraisal -> PUT /manager/team-appraisals/{id}/review
+      // with { managerRating, managerComments } — the real, current endpoint,
+      // not the old POST /manager/appraisals/{id}/review with finalComment.
+      await managerService.reviewTeamAppraisal(
+        reviewTarget.appraisalId,
+        { managerRating: managerRating || 1, managerComments },
+        user.id,
+        submit
       );
       closeReviewModal();
-      // Refresh the report
-      setIsLoadingReport(true);
-      managerService
-        .getTeamReport(user.id, selectedCycleId)
-        .then(setReport)
-        .finally(() => setIsLoadingReport(false));
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Could not submit review. Please try again.';
-      setReviewError(msg);
+      loadReport();
+    } catch (err) {
+      setReviewError(
+        err instanceof Error ? err.message : 'Could not save this review. Please try again.'
+      );
     } finally {
-      setIsSubmitting(false);
+      setIsSavingReview(false);
     }
   }
 
@@ -118,8 +104,6 @@ export function TeamReportPage() {
       </div>
     );
   }
-
-  const rows: TeamRow[] = (report as any)?.rows ?? [];
 
   return (
     <div className="space-y-6">
@@ -169,7 +153,7 @@ export function TeamReportPage() {
               Team Members
             </h3>
 
-            {rows.length === 0 ? (
+            {report.rows.length === 0 ? (
               <div className="p-10 text-center text-sm text-[rgb(var(--text-muted))]">
                 No team members found.
               </div>
@@ -188,57 +172,43 @@ export function TeamReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => {
-                      // Manager can only review when employee has submitted (SUBMITTED status)
-                      const canReview = row.status === 'SUBMITTED';
-                      const alreadyReviewed =
-                        row.status === 'REVIEWED' || row.status === 'COMPLETED';
-
-                      return (
-                        <tr
-                          key={row.employeeId}
-                          className="border-b border-[rgb(var(--border-subtle))] last:border-0"
-                        >
-                          <td className="px-5 py-3 font-medium text-[rgb(var(--text-primary))]">
-                            {row.employeeName}
-                          </td>
-                          <td className="px-5 py-3 text-[rgb(var(--text-secondary))]">
-                            {row.jobTitle}
-                          </td>
-                          <td className="px-5 py-3">
-                            <StatusBadge status={row.status as any} />
-                          </td>
-                          <td className="px-5 py-3">
-                            <StarRating value={row.selfRating ?? null} />
-                          </td>
-                          <td className="px-5 py-3">
-                            <StarRating value={row.managerRating ?? null} />
-                          </td>
-                          <td className="px-5 py-3 text-[rgb(var(--text-secondary))]">
-                            {row.goalsCompleted}/{row.goalsTotal}
-                          </td>
-                          <td className="px-5 py-3">
-                            {canReview ? (
-                              <button
-                                onClick={() => openReviewModal(row)}
-                                className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
-                              >
-                                Review
-                              </button>
-                            ) : alreadyReviewed ? (
-                              <button
-                                onClick={() => openReviewModal(row)}
-                                className="rounded-lg border border-[rgb(var(--border-subtle))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--text-primary))] hover:border-brand-400 hover:text-brand-600"
-                              >
-                                View
-                              </button>
-                            ) : (
-                              <span className="text-xs text-[rgb(var(--text-muted))]">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {report.rows.map((row) => (
+                      <tr
+                        key={row.employeeId}
+                        className="border-b border-[rgb(var(--border-subtle))] last:border-0"
+                      >
+                        <td className="px-5 py-3 font-medium text-[rgb(var(--text-primary))]">
+                          {row.employeeName}
+                        </td>
+                        <td className="px-5 py-3 text-[rgb(var(--text-secondary))]">
+                          {row.jobTitle}
+                        </td>
+                        <td className="px-5 py-3">
+                          <StatusBadge status={row.status} />
+                        </td>
+                        <td className="px-5 py-3">
+                          <StarRating value={row.selfRating} />
+                        </td>
+                        <td className="px-5 py-3">
+                          <StarRating value={row.managerRating} />
+                        </td>
+                        <td className="px-5 py-3 text-[rgb(var(--text-secondary))]">
+                          {row.goalsCompleted}/{row.goalsTotal}
+                        </td>
+                        <td className="px-5 py-3">
+                          {canReview(row) ? (
+                            <button
+                              onClick={() => openReviewModal(row)}
+                              className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+                            >
+                              {row.status === 'MANAGER_DRAFT' ? 'Continue Review' : 'Review'}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-[rgb(var(--text-muted))]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -247,136 +217,87 @@ export function TeamReportPage() {
         </>
       )}
 
-      {/* ── Review Modal ── */}
       <Modal
-        isOpen={!!reviewRow}
+        isOpen={!!reviewTarget}
         onClose={closeReviewModal}
-        title={
-          reviewRow?.status === 'SUBMITTED'
-            ? `Review — ${reviewRow?.employeeName}`
-            : `View Review — ${reviewRow?.employeeName}`
-        }
-        description={
-          reviewRow?.status === 'SUBMITTED'
-            ? "Read the employee's self-assessment and submit your rating."
-            : 'Manager review already submitted.'
-        }
+        title="Review Appraisal"
+        description={reviewTarget ? `${reviewTarget.employeeName} — ${reviewTarget.jobTitle}` : undefined}
       >
-        {reviewRow && (
-          <div className="space-y-5">
+        <div className="space-y-4">
+          {reviewTarget?.selfRating != null && (
+            <div className="rounded-lg bg-brand-50 px-3 py-2.5 text-sm dark:bg-brand-900/20">
+              <span className="font-medium text-brand-700 dark:text-brand-300">Self rating: </span>
+              <StarRating value={reviewTarget.selfRating} />
+            </div>
+          )}
 
-            {/* Employee self-assessment (read-only) */}
-            {reviewRow.selfAssessment && (
-              <div className="space-y-3 rounded-lg bg-[rgb(var(--bg-subtle,var(--bg-card)))] p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[rgb(var(--text-muted))]">
-                  Employee Self-Assessment
-                </p>
-
-                {reviewRow.selfAssessment.whatWentWell && (
-                  <div>
-                    <p className="mb-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">What Went Well</p>
-                    <p className="text-sm text-[rgb(var(--text-primary))]">{reviewRow.selfAssessment.whatWentWell}</p>
-                  </div>
-                )}
-                {reviewRow.selfAssessment.whatToImprove && (
-                  <div>
-                    <p className="mb-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">What to Improve</p>
-                    <p className="text-sm text-[rgb(var(--text-primary))]">{reviewRow.selfAssessment.whatToImprove}</p>
-                  </div>
-                )}
-                {reviewRow.selfAssessment.keyAchievements && (
-                  <div>
-                    <p className="mb-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">Key Achievements</p>
-                    <p className="text-sm text-[rgb(var(--text-primary))]">{reviewRow.selfAssessment.keyAchievements}</p>
-                  </div>
-                )}
-
-                {reviewRow.selfRating != null && (
-                  <div>
-                    <p className="mb-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">Self Rating</p>
-                    <StarRating value={reviewRow.selfRating} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Manager rating input */}
-            {reviewRow.status === 'SUBMITTED' && (
-              <>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
-                    Your Rating <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((val) => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => setManagerRating(val)}
-                        aria-label={`Rate ${val} out of 5`}
-                      >
-                        <Icons.Star
-                          filled={val <= managerRating}
-                          className={`h-6 w-6 ${
-                            val <= managerRating
-                              ? 'text-amber-400'
-                              : 'text-surface-300 dark:text-surface-700'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-1 text-xs text-[rgb(var(--text-muted))]">Click a star to rate</p>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
-                    Comments / Feedback
-                  </label>
-                  <textarea
-                    value={finalComment}
-                    onChange={(e) => setFinalComment(e.target.value)}
-                    rows={4}
-                    placeholder="Add your feedback, observations, and recommendations for the employee..."
-                    className="w-full resize-none rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Already reviewed — show manager rating read-only */}
-            {reviewRow.status !== 'SUBMITTED' && reviewRow.managerRating != null && (
-              <div className="rounded-lg bg-brand-50 px-3 py-2.5 text-sm dark:bg-brand-900/20">
-                <span className="font-medium text-brand-700 dark:text-brand-300">Your rating: </span>
-                <StarRating value={reviewRow.managerRating} />
-              </div>
-            )}
-
-            {reviewError && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
-                {reviewError}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                onClick={closeReviewModal}
-                className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 dark:hover:bg-surface-800"
-              >
-                {reviewRow.status === 'SUBMITTED' ? 'Cancel' : 'Close'}
-              </button>
-              {reviewRow.status === 'SUBMITTED' && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
+              Your Rating <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((value) => (
                 <button
-                  onClick={handleSubmitReview}
-                  disabled={isSubmitting}
-                  className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  key={value}
+                  type="button"
+                  onClick={() => setManagerRating(value)}
+                  aria-label={`Rate ${value} out of 5`}
                 >
-                  {isSubmitting ? 'Submitting…' : 'Submit Review'}
+                  <Icons.Star
+                    filled={value <= managerRating}
+                    className={`h-6 w-6 ${
+                      value <= managerRating
+                        ? 'text-amber-400'
+                        : 'text-surface-300 dark:text-surface-700'
+                    }`}
+                  />
                 </button>
-              )}
+              ))}
             </div>
           </div>
-        )}
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
+              Comments
+            </label>
+            <textarea
+              value={managerComments}
+              onChange={(e) => setManagerComments(e.target.value)}
+              rows={4}
+              placeholder="Your feedback on this employee's performance..."
+              className="w-full resize-none rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-2 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+          </div>
+
+          {reviewError && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+              {reviewError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={closeReviewModal}
+              className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 dark:hover:bg-surface-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleSaveReview(false)}
+              disabled={isSavingReview}
+              className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-300 dark:hover:bg-surface-800"
+            >
+              Save Draft
+            </button>
+            <button
+              onClick={() => handleSaveReview(true)}
+              disabled={isSavingReview}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSavingReview ? 'Submitting…' : 'Submit Review'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

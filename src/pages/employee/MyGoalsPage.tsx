@@ -25,29 +25,29 @@ export function MyGoalsPage() {
   const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
+  // null = no selection, true = completed, false = not done
   const [completed, setCompleted] = useState<boolean | null>(null);
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [user]);
+  useEffect(() => { loadData(); }, [user]);
 
   function loadData() {
     if (!user) return;
     setIsLoading(true);
-    employeeService
-      .getMyGoals(user.id)
-      .then(setGoals)
-      .finally(() => setIsLoading(false));
+    employeeService.getMyGoals(user.id).then(setGoals).finally(() => setIsLoading(false));
   }
 
   function openGoalModal(goal: Goal) {
     setActiveGoal(goal);
+    setSubmitError(null);
     setCompleted(
-      goal.employeeResponse === 'COMPLETED' ? true : goal.employeeResponse === 'NOT_COMPLETED' ? false : null
+      goal.employeeResponse === 'COMPLETED' ? true
+      : goal.employeeResponse === 'NOT_COMPLETED' ? false
+      : null
     );
     setNote(goal.employeeNote ?? '');
   }
@@ -56,21 +56,44 @@ export function MyGoalsPage() {
     setActiveGoal(null);
     setCompleted(null);
     setNote('');
+    setSubmitError(null);
   }
 
-  async function handleSubmit() {
-    if (!activeGoal || completed === null) return;
+  // Mark as In Progress — no completion claim, just "I've started"
+  async function handleMarkInProgress() {
+    if (!activeGoal || !user) return;
     setIsSaving(true);
+    setSubmitError(null);
     try {
-      await employeeService.respondToGoal(activeGoal.id, { completed, note: note || undefined });
+      await employeeService.respondToGoal(activeGoal.id, { completed: null, note: note || undefined }, user.id);
       closeModal();
       loadData();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to update. Please try again.');
     } finally {
       setIsSaving(false);
     }
   }
 
+  // Submit a completion claim (yes/no)
+  async function handleSubmit() {
+    if (!activeGoal || completed === null || !user) return;
+    setIsSaving(true);
+    setSubmitError(null);
+    try {
+      await employeeService.respondToGoal(activeGoal.id, { completed, note: note || undefined }, user.id);
+      closeModal();
+      loadData();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit response. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const isInProgress = activeGoal?.employeeResponse === 'IN_PROGRESS';
   const alreadyResponded = activeGoal?.employeeResponse !== 'PENDING';
+  const canMarkInProgress = activeGoal?.employeeResponse === 'PENDING';
 
   if (isLoading) {
     return (
@@ -106,9 +129,7 @@ export function MyGoalsPage() {
               >
                 <div className="flex w-full items-start justify-between gap-2">
                   <span className="font-semibold text-[rgb(var(--text-primary))]">{goal.title}</span>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${GOAL_STATUS_STYLES[goal.status]}`}
-                  >
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${GOAL_STATUS_STYLES[goal.status]}`}>
                     {GOAL_STATUS_LABELS[goal.status]}
                   </span>
                 </div>
@@ -128,16 +149,17 @@ export function MyGoalsPage() {
                 </div>
 
                 <div className="mt-2 text-xs text-[rgb(var(--text-muted))]">
-                  {goal.employeeResponse === 'PENDING' && 'You haven\u2019t responded yet'}
+                  {goal.employeeResponse === 'PENDING' && (
+                    <span className="text-amber-600 dark:text-amber-400">⚡ Click to start or respond</span>
+                  )}
+                  {goal.employeeResponse === 'IN_PROGRESS' && (
+                    <span className="text-sky-600 dark:text-sky-400">🔄 In progress — submit when done</span>
+                  )}
                   {goal.employeeResponse === 'COMPLETED' && (
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      ✓ You marked this as completed
-                    </span>
+                    <span className="text-emerald-600 dark:text-emerald-400">✓ You marked this as completed</span>
                   )}
                   {goal.employeeResponse === 'NOT_COMPLETED' && (
-                    <span className="text-amber-600 dark:text-amber-400">
-                      You marked this as not done
-                    </span>
+                    <span className="text-red-500 dark:text-red-400">✗ You marked this as not done</span>
                   )}
                 </div>
               </button>
@@ -146,41 +168,77 @@ export function MyGoalsPage() {
         </div>
       )}
 
-      <Modal
-        isOpen={!!activeGoal}
-        onClose={closeModal}
-        title={activeGoal?.title ?? ''}
-      >
+      <Modal isOpen={!!activeGoal} onClose={closeModal} title={activeGoal?.title ?? ''}>
         <div className="space-y-4">
-          <div>
-            <p className="text-sm font-medium text-[rgb(var(--text-primary))]">Did you complete this goal?</p>
-            <div className="mt-2 grid grid-cols-2 gap-3">
+
+          {/* Step 1: Mark In Progress (only if still PENDING) */}
+          {canMarkInProgress && (
+            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-900/20">
+              <p className="text-sm font-medium text-sky-800 dark:text-sky-300">
+                Have you started working on this goal?
+              </p>
               <button
-                type="button"
-                onClick={() => setCompleted(true)}
-                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                  completed === true
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
-                    : 'border-[rgb(var(--border-subtle))] text-[rgb(var(--text-secondary))] hover:border-emerald-300'
-                }`}
+                onClick={handleMarkInProgress}
+                disabled={isSaving}
+                className="mt-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
               >
-                <Icons.Check className="h-4 w-4" />
-                Yes, completed
+                {isSaving ? 'Updating…' : '🔄 Mark as In Progress'}
               </button>
-              <button
-                type="button"
-                onClick={() => setCompleted(false)}
-                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                  completed === false
-                    ? 'border-red-400 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400'
-                    : 'border-[rgb(var(--border-subtle))] text-[rgb(var(--text-secondary))] hover:border-red-300'
-                }`}
-              >
-                <Icons.Close className="h-4 w-4" />
-                No, not done
-              </button>
+              <p className="mt-1.5 text-xs text-sky-600 dark:text-sky-400">
+                This lets your manager know you've started. You can submit completion later.
+              </p>
             </div>
-          </div>
+          )}
+
+          {/* Divider between in-progress and completion */}
+          {canMarkInProgress && (
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-[rgb(var(--border-subtle))]" />
+              <span className="text-xs text-[rgb(var(--text-muted))]">or submit completion</span>
+              <div className="h-px flex-1 bg-[rgb(var(--border-subtle))]" />
+            </div>
+          )}
+
+          {/* Step 2: Completion claim */}
+          {activeGoal?.status !== 'COMPLETED' && (
+            <div>
+              <p className="text-sm font-medium text-[rgb(var(--text-primary))]">
+                {isInProgress ? 'Ready to submit? Did you complete this goal?' : 'Did you complete this goal?'}
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCompleted(true)}
+                  className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    completed === true
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                      : 'border-[rgb(var(--border-subtle))] text-[rgb(var(--text-secondary))] hover:border-emerald-300'
+                  }`}
+                >
+                  <Icons.Check className="h-4 w-4" />
+                  Yes, completed
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCompleted(false)}
+                  className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    completed === false
+                      ? 'border-red-400 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400'
+                      : 'border-[rgb(var(--border-subtle))] text-[rgb(var(--text-secondary))] hover:border-red-300'
+                  }`}
+                >
+                  <Icons.Close className="h-4 w-4" />
+                  No, not done
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeGoal?.status === 'COMPLETED' && (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+              ✓ This goal has been confirmed as completed by your manager.
+            </p>
+          )}
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[rgb(var(--text-primary))]">
@@ -195,27 +253,43 @@ export function MyGoalsPage() {
             />
           </div>
 
-          {alreadyResponded && (
+          {alreadyResponded && activeGoal?.status !== 'COMPLETED' && (
             <p className="text-xs text-[rgb(var(--text-muted))]">
               You can update your response until your manager finalizes it.
             </p>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              onClick={closeModal}
-              className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 dark:hover:bg-surface-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={completed === null || isSaving}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSaving ? 'Submitting…' : 'Submit'}
-            </button>
-          </div>
+          {submitError && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+              {submitError}
+            </p>
+          )}
+
+          {activeGoal?.status !== 'COMPLETED' && (
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={closeModal}
+                className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 dark:hover:bg-surface-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={completed === null || isSaving}
+                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? 'Submitting…' : 'Submit Response'}
+              </button>
+            </div>
+          )}
+
+          {activeGoal?.status === 'COMPLETED' && (
+            <div className="flex justify-end">
+              <button onClick={closeModal} className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 dark:hover:bg-surface-800">
+                Close
+              </button>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

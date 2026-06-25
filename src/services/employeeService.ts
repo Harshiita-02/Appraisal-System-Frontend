@@ -7,9 +7,6 @@ import type {
   SelfAssessmentRequest,
 } from '@/types';
 
-// ✅ Mock is OFF — all calls go to the real Spring Boot backend
-const USE_MOCK = false;
-
 export const employeeService = {
 
   async getDashboard(employeeId: string): Promise<EmployeeDashboardData> {

@@ -208,7 +208,7 @@ export function ManagerDashboardPage() {
                             </button>
                           ) : (
                             <Link
-                              to="/manager/team-report"
+                              to="/manager/reports"
                               className="rounded-lg border border-[rgb(var(--border-subtle))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--text-primary))] hover:border-brand-400 hover:text-brand-600"
                             >
                               View
