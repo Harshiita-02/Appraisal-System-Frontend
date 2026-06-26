@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { hrService } from '@/services/hrService';
 import { GOAL_STATUS_LABELS, type Appraisal, type Goal, type GoalRequest, type GoalStatus } from '@/types';
 import { Modal } from '@/components/Modal';
@@ -18,7 +17,6 @@ function formatDate(iso: string): string {
 }
 
 export function GoalsPage() {
-  const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,10 +35,9 @@ export function GoalsPage() {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, []);
 
   function loadData() {
-    if (!user) return;
     setIsLoading(true);
     Promise.all([hrService.getGoals(), hrService.getAssignableAppraisals()])
       .then(([goalList, appraisalList]) => {
@@ -80,8 +77,7 @@ export function GoalsPage() {
 
     setIsSaving(true);
     try {
-      if (!user) return;
-      await hrService.createGoal(form, user.id);
+      await hrService.createGoal(form);
       closeModal();
       setSuccessMessage('Goal assigned');
       loadData();
@@ -94,8 +90,8 @@ export function GoalsPage() {
   }
 
   async function confirmDelete() {
-    if (!deleteTarget || !user) return;
-    await hrService.deleteGoal(deleteTarget.id, user.id);
+    if (!deleteTarget) return;
+    await hrService.deleteGoal(deleteTarget.id);
     setDeleteTarget(null);
     loadData();
   }
@@ -115,11 +111,11 @@ export function GoalsPage() {
   }
 
   async function handleConfirm(completed: boolean) {
-    if (!confirmTarget || !user) return;
+    if (!confirmTarget) return;
     setIsConfirming(true);
     setConfirmError(null);
     try {
-      await hrService.confirmGoalStatus(confirmTarget.id, completed, user.id);
+      await hrService.confirmGoalStatus(confirmTarget.id, completed);
       closeConfirmModal();
       loadData();
     } catch (err) {

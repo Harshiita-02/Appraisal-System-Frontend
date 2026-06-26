@@ -13,6 +13,35 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Modal } from '@/components/Modal';
 import { Icons } from '@/components/Icons';
 
+// Pulls a human-readable message out of an Axios error. Spring's default
+// error body (and most custom @ExceptionHandler responses) is shaped like
+// { message: "...", error: "...", status: 400 } — this checks the common
+// field names backends use and falls back to a generic string only if none
+// of them are present, instead of always discarding the real reason.
+//
+// NOTE: this is duplicated from UsersPage.tsx. Consider moving it to a
+// shared src/utils/errors.ts and importing it in both places.
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const response = (err as { response?: { data?: unknown } }).response;
+    const data = response?.data;
+    if (data && typeof data === 'object') {
+      const body = data as Record<string, unknown>;
+      const candidate = body.message ?? body.error ?? body.detail;
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate;
+      }
+    }
+    if (typeof data === 'string' && data.trim()) {
+      return data;
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+}
+
 export function ManageAppraisalsPage() {
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -53,7 +82,7 @@ export function ManageAppraisalsPage() {
     return appraisals.filter((a) => {
       if (statusFilter !== 'ALL' && a.status !== statusFilter) return false;
       if (departmentFilter !== 'ALL' && String(a.departmentId) !== departmentFilter) return false;
-if (cycleFilter !== 'ALL' && String(a.cycleId) !== cycleFilter) return false;
+      if (cycleFilter !== 'ALL' && String(a.cycleId) !== cycleFilter) return false;
       if (search.trim()) {
         const q = search.trim().toLowerCase();
         const haystack = `${a.employeeName} ${a.managerName} ${a.cycle}`.toLowerCase();
@@ -81,8 +110,13 @@ if (cycleFilter !== 'ALL' && String(a.cycleId) !== cycleFilter) return false;
     try {
       await hrService.advanceAppraisalStatus(appraisal.id, appraisal.status);
       await loadData();
-    } catch {
-      setActionError(`Couldn't advance ${appraisal.employeeName}'s appraisal. It may already be complete.`);
+    } catch (err) {
+      setActionError(
+        extractErrorMessage(
+          err,
+          `Couldn't advance ${appraisal.employeeName}'s appraisal. It may already be complete.`
+        )
+      );
     } finally {
       setAdvancingIds((prev) => {
         const next = new Set(prev);
@@ -214,6 +248,12 @@ if (cycleFilter !== 'ALL' && String(a.cycleId) !== cycleFilter) return false;
               <tbody>
                 {filteredAppraisals.map((a) => {
                   const isFinal = a.status === 'ACKNOWLEDGED';
+                  // HR only owns the Manager Reviewed -> Approved and
+                  // Approved -> Acknowledged transitions. Every earlier
+                  // stage belongs to the employee (self-review) or the
+                  // manager (manager review), so the button stays
+                  // disabled until it's actually HR's turn to act.
+                  const canAdvance = a.status === 'MANAGER_REVIEWED' || a.status === 'APPROVED';
                   const isAdvancing = advancingIds.has(a.id);
                   return (
                     <tr
@@ -237,8 +277,14 @@ if (cycleFilter !== 'ALL' && String(a.cycleId) !== cycleFilter) return false;
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => handleAdvance(a)}
-                            disabled={isFinal || isAdvancing}
-                            title={isFinal ? 'Already acknowledged' : 'Advance to next stage'}
+                            disabled={!canAdvance || isAdvancing}
+                            title={
+                              isFinal
+                                ? 'Already acknowledged'
+                                : canAdvance
+                                  ? 'Advance to next stage'
+                                  : 'Waiting on employee or manager action'
+                            }
                             className="rounded-lg border border-[rgb(var(--border-subtle))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--text-primary))] hover:border-brand-400 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             {isAdvancing ? 'Advancing…' : 'Advance'}

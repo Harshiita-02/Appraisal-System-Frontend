@@ -10,7 +10,6 @@ import type {
   CreateAppraisalRequest,
   AppraisalStatus,
   CycleReport,
-  EmployeeGoalCompletionRequest,
   Goal,
   GoalRequest,
 } from '@/types';
@@ -115,8 +114,8 @@ export const hrService = {
   },
 
   async deleteUser(userId: string): Promise<void> {
-  await apiClient.delete(`/hr/users/${userId}`);
-},
+    await apiClient.delete(`/hr/users/${userId}`);
+  },
 
   async getCycleReport(cycleId: string): Promise<CycleReport> {
     const { data } = await apiClient.get<CycleReport>('/hr/reports', {
@@ -137,37 +136,23 @@ export const hrService = {
     return data;
   },
 
-  async createGoal(payload: GoalRequest, hrId: string): Promise<Goal> {
-    const { data } = await apiClient.post<Goal>('/hr/goals', payload, {
-      params: { hrId },
-    });
+  async createGoal(payload: GoalRequest): Promise<Goal> {
+    const { data } = await apiClient.post<Goal>('/hr/goals', payload);
     return data;
   },
 
-  async deleteGoal(goalId: string, hrId: string): Promise<void> {
-    await apiClient.delete(`/hr/goals/${goalId}`, {
-      params: { hrId },
-    });
+  async deleteGoal(goalId: string): Promise<void> {
+    await apiClient.delete(`/hr/goals/${goalId}`);
   },
 
-  async confirmGoalStatus(goalId: string, completed: boolean, hrId: string): Promise<Goal> {
+  async deleteAppraisal(appraisalId: string): Promise<void> {
+    await apiClient.delete(`/hr/appraisals/${appraisalId}`);
+  },
+
+  async confirmGoalStatus(goalId: string, completed: boolean): Promise<Goal> {
     const { data } = await apiClient.patch<Goal>(
       `/hr/goals/${goalId}/confirm`,
-      { completed },
-      { params: { hrId } }
-    );
-    return data;
-  },
-
-  async respondToGoal(
-    goalId: string,
-    payload: EmployeeGoalCompletionRequest,
-    hrId: string
-  ): Promise<Goal> {
-    const { data } = await apiClient.patch<Goal>(
-      `/hr/goals/${goalId}/respond`,
-      payload,
-      { params: { hrId } }
+      { completed }
     );
     return data;
   },

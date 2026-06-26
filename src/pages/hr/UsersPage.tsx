@@ -57,6 +57,7 @@ export function UsersPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deactivateCandidate, setDeactivateCandidate] = useState<User | null>(null);
 
   useEffect(() => {
     loadData();
@@ -153,14 +154,28 @@ export function UsersPage() {
   }
 
   async function handleDeleteUser(user: User) {
-  setActionError(null);
-  try {
-    await hrService.deleteUser(user.id);
-    loadData();
-  } catch (err) {
-    setActionError(extractErrorMessage(err, `Couldn't delete ${user.name}. They may have active appraisals.`));
+    setActionError(null);
+    setDeactivateCandidate(null);
+    try {
+      await hrService.deleteUser(user.id);
+      loadData();
+    } catch (err) {
+      const message = extractErrorMessage(err, `Couldn't delete ${user.name}.`);
+      setActionError(message);
+      setDeactivateCandidate(user); // shows a "Deactivate instead?" prompt
+    }
   }
-}
+
+  async function handleDeactivateUser(user: User) {
+    setActionError(null);
+    try {
+      await hrService.deactivateUser(user.id);
+      setDeactivateCandidate(null);
+      loadData();
+    } catch (err) {
+      setActionError(extractErrorMessage(err, `Couldn't deactivate ${user.name}.`));
+    }
+  }
 
   if (isLoading) {
     return (
@@ -189,9 +204,17 @@ export function UsersPage() {
       </div>
 
       {actionError && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
-          {actionError}
-        </p>
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+          <span>{actionError}</span>
+          {deactivateCandidate && (
+            <button
+              onClick={() => handleDeactivateUser(deactivateCandidate)}
+              className="shrink-0 rounded-md bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              Deactivate instead
+            </button>
+          )}
+        </div>
       )}
 
       <div className="rounded-xl border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] shadow-card">
