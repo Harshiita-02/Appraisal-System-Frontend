@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { to: '/hr/departments', label: 'Departments', icon: Icons.Department },
   { to: '/hr/appraisals', label: 'Appraisals', icon: Icons.Clipboard },
   { to: '/hr/appraisals/create', label: 'Create Appraisal', icon: Icons.Plus },
-  { to: '/hr/goals', label: 'Goals', icon: Icons.Target },
   { to: '/hr/reports', label: 'Reports', icon: Icons.Chart },
 ];
 

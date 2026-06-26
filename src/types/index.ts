@@ -77,6 +77,7 @@ export interface Appraisal {
   id: string;
   employeeId: string;
   employeeName: string;
+  employeeRole?: string;
   departmentId: string;
   department: string;
   managerId: string;
@@ -122,6 +123,7 @@ export interface Goal {
   appraisalId: string;
   employeeId: string;
   employeeName: string;
+  employeeRole?: string;
   cycle: string;
   title: string;
   description: string | null;
@@ -225,6 +227,7 @@ export interface TeamReportRow {
   appraisalId: string | null; // NEW
   employeeId: string;
   employeeName: string;
+  employeeRole?: string;
   jobTitle: string;
   status: AppraisalStatus;
   selfRating: number | null;
@@ -289,6 +292,7 @@ export interface DepartmentReportRow {
 
 export interface PendingActionRow {
   employeeName: string;
+  employeeRole?: string;
   department: string;
   managerName: string;
   status: AppraisalStatus;

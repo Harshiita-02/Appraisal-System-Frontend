@@ -54,7 +54,7 @@ export function CreateAppraisalPage() {
   useEffect(() => {
     Promise.all([hrService.getUsers(), hrService.getDepartments(), hrService.getCycles()])
       .then(([userList, departmentList, cycleList]) => {
-        setUsers(userList.filter((u) => u.role !== 'HR' && u.status === 'ACTIVE'));
+        setUsers(userList.filter((u) => u.role !== 'HR' && u.role !== 'MANAGER' && u.status === 'ACTIVE'));
         setDepartments(departmentList);
         setCycles(cycleList);
         // If no cycles exist, default to creating a new one

@@ -102,7 +102,7 @@ export function ManagerDashboardPage() {
         <StatCard label="Completed" value={data.summary.completed} />
       </div>
 
-      {/* My Appraisals — as an employee reporting to my own manager */}
+      {/* My Appraisals — as an employee reporting to my own manager
       <div>
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-sm font-semibold text-[rgb(var(--text-primary))]">My Appraisals</h2>
@@ -146,7 +146,7 @@ export function ManagerDashboardPage() {
             ))}
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Team Appraisals — reviews the manager needs to complete */}
       <div>

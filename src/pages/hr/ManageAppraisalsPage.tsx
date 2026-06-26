@@ -71,7 +71,7 @@ export function ManageAppraisalsPage() {
     setIsLoading(true);
     Promise.all([hrService.getAppraisals(), hrService.getDepartments(), hrService.getCycles()])
       .then(([appraisalList, departmentList, cycleList]) => {
-        setAppraisals(appraisalList);
+        setAppraisals(appraisalList.filter((a) => a.employeeRole !== 'MANAGER'));
         setDepartments(departmentList);
         setCycles(cycleList);
       })

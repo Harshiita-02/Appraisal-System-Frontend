@@ -51,6 +51,7 @@ export function HrDashboardPage() {
   const filteredAppraisals: Appraisal[] = useMemo(() => {
     if (!data) return [];
     return data.appraisals.filter((a) => {
+      if (a.employeeRole === 'MANAGER') return false;
       if (statusFilter !== 'ALL' && a.status !== statusFilter) return false;
       if (departmentFilter !== 'ALL' && a.department !== departmentFilter) return false;
       if (cycleFilter !== 'ALL' && a.cycle !== cycleFilter) return false;
