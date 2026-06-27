@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { managerService } from '@/services/managerService';
 import type { Appraisal } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -8,7 +7,6 @@ import { Modal } from '@/components/Modal';
 import { Icons } from '@/components/Icons';
 
 export function ReviewsPage() {
-  const { user } = useAuth();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -18,13 +16,12 @@ export function ReviewsPage() {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [isSavingReview, setIsSavingReview] = useState(false);
 
-  useEffect(() => { loadData(); }, [user]);
+  useEffect(() => { loadData(); }, []);
 
   function loadData() {
-    if (!user) return;
     setIsLoading(true);
     managerService
-      .getAssignableAppraisals(user.id)
+      .getAssignableAppraisals()
       .then(setAppraisals)
       .finally(() => setIsLoading(false));
   }
@@ -52,7 +49,7 @@ export function ReviewsPage() {
   }
 
   async function handleSaveReview(submit: boolean) {
-    if (!reviewTarget || !user) return;
+    if (!reviewTarget) return;
     if (['MANAGER_REVIEWED', 'APPROVED', 'ACKNOWLEDGED'].includes(reviewTarget.status)) return;
     setReviewError(null);
 
@@ -66,7 +63,6 @@ export function ReviewsPage() {
       await managerService.reviewTeamAppraisal(
         reviewTarget.id,
         { managerRating: managerRating || 1, managerComments },
-        user.id,
         submit
       );
       closeReviewModal();

@@ -30,13 +30,12 @@ export function ManagerDashboardPage() {
   }, [user]);
 
   function loadData() {
-    if (!user) return;
-    setIsLoading(true);
-    managerService
-      .getDashboard(user.id)
-      .then(setData)
-      .finally(() => setIsLoading(false));
-  }
+  setIsLoading(true);
+  managerService
+    .getDashboard()
+    .then(setData)
+    .finally(() => setIsLoading(false));
+}
 
   function openReviewModal(appraisal: Appraisal) {
     setReviewTarget(appraisal);
@@ -51,7 +50,7 @@ export function ManagerDashboardPage() {
   }
 
   async function handleSaveReview(submit: boolean) {
-    if (!reviewTarget || !user) return;
+    if (!reviewTarget) return;
     setReviewError(null);
 
     if (submit && managerRating < 1) {
@@ -64,7 +63,6 @@ export function ManagerDashboardPage() {
       await managerService.reviewTeamAppraisal(
         reviewTarget.id,
         { managerRating: managerRating || 1, managerComments },
-        user.id,
         submit
       );
       closeReviewModal();

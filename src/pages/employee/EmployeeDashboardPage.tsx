@@ -29,17 +29,16 @@ export function EmployeeDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
     Promise.all([
-      employeeService.getDashboard(user.id),
-      employeeService.getMyGoals(user.id),
+      employeeService.getDashboard(),
+      employeeService.getMyGoals(),
     ])
       .then(([dashData, goalList]) => {
         setData(dashData);
         setGoals(goalList);
       })
       .finally(() => setIsLoading(false));
-  }, [user]);
+  }, []);
 
   if (isLoading || !data) {
     return (

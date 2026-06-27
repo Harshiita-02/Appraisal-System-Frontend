@@ -10,12 +10,11 @@ export function MyTeamPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
     managerService
-      .getTeam(user.id)
+      .getTeam()
       .then(setTeam)
       .finally(() => setIsLoading(false));
-  }, [user]);
+  }, []);
 
   if (isLoading) {
     return (

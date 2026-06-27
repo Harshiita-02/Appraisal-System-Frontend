@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { managerService } from '@/services/managerService';
 import type { Cycle, TeamReport, TeamReportRow } from '@/types';
 import { StatCard } from '@/components/StatCard';
@@ -9,7 +8,6 @@ import { Modal } from '@/components/Modal';
 import { Icons } from '@/components/Icons';
 
 export function TeamReportPage() {
-  const { user } = useAuth();
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [selectedCycleId, setSelectedCycleId] = useState<string>('');
   const [report, setReport] = useState<TeamReport | null>(null);
@@ -33,13 +31,13 @@ export function TeamReportPage() {
 
   useEffect(() => {
     loadReport();
-  }, [user, selectedCycleId]);
+  }, [selectedCycleId]);
 
   function loadReport() {
-    if (!user || !selectedCycleId) return;
+    if (!selectedCycleId) return;
     setIsLoadingReport(true);
     managerService
-      .getTeamReport(user.id, selectedCycleId)
+      .getTeamReport(selectedCycleId)
       .then(setReport)
       .finally(() => setIsLoadingReport(false));
   }
@@ -67,7 +65,7 @@ export function TeamReportPage() {
   }
 
   async function handleSaveReview(submit: boolean) {
-    if (!reviewTarget || !reviewTarget.appraisalId || !user) return;
+    if (!reviewTarget || !reviewTarget.appraisalId) return;
     setReviewError(null);
 
     if (submit && managerRating < 1) {
@@ -83,7 +81,6 @@ export function TeamReportPage() {
       await managerService.reviewTeamAppraisal(
         reviewTarget.appraisalId,
         { managerRating: managerRating || 1, managerComments },
-        user.id,
         submit
       );
       closeReviewModal();

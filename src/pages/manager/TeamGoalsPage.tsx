@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { managerService } from '@/services/managerService';
 import { GOAL_STATUS_LABELS, type Appraisal, type Goal, type GoalRequest, type GoalStatus } from '@/types';
 import { Modal } from '@/components/Modal';
@@ -18,7 +17,6 @@ function formatDate(iso: string): string {
 }
 
 export function TeamGoalsPage() {
-  const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,12 +37,11 @@ export function TeamGoalsPage() {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, []);
 
   function loadData() {
-    if (!user) return;
     setIsLoading(true);
-    Promise.all([managerService.getGoals(user.id), managerService.getAssignableAppraisals(user.id)])
+    Promise.all([managerService.getGoals(), managerService.getAssignableAppraisals()])
       .then(([goalList, appraisalList]) => {
         setGoals(goalList);
         setAppraisals(appraisalList);
@@ -82,8 +79,7 @@ export function TeamGoalsPage() {
 
     setIsSaving(true);
     try {
-      if (!user) return;
-      await managerService.createGoal(form, user.id);
+      await managerService.createGoal(form);
       closeModal();
       setSuccessMessage('Goal created');
       loadData();
@@ -96,8 +92,8 @@ export function TeamGoalsPage() {
   }
 
   async function confirmDelete() {
-    if (!deleteTarget || !user) return;
-    await managerService.deleteGoal(deleteTarget.id, user.id);
+    if (!deleteTarget) return;
+    await managerService.deleteGoal(deleteTarget.id);
     setDeleteTarget(null);
     loadData();
   }
@@ -120,11 +116,11 @@ export function TeamGoalsPage() {
   }
 
   async function handleConfirm(completed: boolean) {
-    if (!confirmTarget || !user) return;
+    if (!confirmTarget) return;
     setIsConfirming(true);
     setConfirmError(null);
     try {
-      await managerService.confirmGoalStatus(confirmTarget.id, completed, user.id);
+      await managerService.confirmGoalStatus(confirmTarget.id, completed);
       closeConfirmModal();
       loadData();
     } catch (err) {

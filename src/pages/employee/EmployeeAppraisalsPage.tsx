@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { employeeService } from '@/services/employeeService';
 import { APPRAISAL_STATUS_LABELS, type Appraisal, type AppraisalStatus } from '@/types';
 import { Modal } from '@/components/Modal';
@@ -7,10 +6,6 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
 import { Icons } from '@/components/Icons';
 
-// Statuses meaningful to filter by from the employee's own point of view.
-// MANAGER_DRAFT and MANAGER_REVIEWED are purely internal manager-side
-// states — an appraisal can technically sit there, but an employee never
-// causes that transition and rarely thinks to filter for it by that name.
 const EMPLOYEE_FILTERABLE_STATUSES: AppraisalStatus[] = [
   'PENDING',
   'EMPLOYEE_DRAFT',
@@ -24,7 +19,6 @@ function formatDate(iso: string): string {
 }
 
 export function EmployeeAppraisalsPage() {
-  const { user } = useAuth();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,13 +34,12 @@ export function EmployeeAppraisalsPage() {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, []);
 
   function loadData() {
-    if (!user) return;
     setIsLoading(true);
     employeeService
-      .getMyAppraisals(user.id)
+      .getMyAppraisals()
       .then(setAppraisals)
       .finally(() => setIsLoading(false));
   }
@@ -76,7 +69,7 @@ export function EmployeeAppraisalsPage() {
     activeAppraisal?.status === 'PENDING' || activeAppraisal?.status === 'EMPLOYEE_DRAFT';
 
   async function handleSaveDraft() {
-    if (!activeAppraisal || !user) return;
+    if (!activeAppraisal) return;
     setIsSaving(true);
     try {
       await employeeService.saveSelfAssessmentDraft(
@@ -86,8 +79,7 @@ export function EmployeeAppraisalsPage() {
           whatWentWell,
           whatToImprove,
           keyAchievements,
-        },
-        user.id
+        }
       );
       closeModal();
       loadData();
@@ -99,7 +91,7 @@ export function EmployeeAppraisalsPage() {
   }
 
   async function handleSubmit() {
-    if (!activeAppraisal || !user) return;
+    if (!activeAppraisal) return;
     setFormError(null);
 
     if (selfRating < 1) {
@@ -116,8 +108,7 @@ export function EmployeeAppraisalsPage() {
           whatWentWell,
           whatToImprove,
           keyAchievements,
-        },
-        user.id
+        }
       );
       closeModal();
       loadData();

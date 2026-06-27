@@ -11,7 +11,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Attach JWT (once your Spring Boot backend issues one) to every request.
+// Attach JWT to every request.
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
   if (token) {
@@ -20,9 +20,22 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Centralized 401 handling: bounce to login if the token is invalid/expired.
+// Centralized 401 handling, PLUS sliding-expiry token refresh.
+//
+// The backend's JwtAuthFilter reissues a fresh token (full new 20-minute
+// window) whenever the current one has used up more than half its life,
+// and sends it back via the X-Refreshed-Token response header. If we
+// never read that header, the user gets logged out exactly 20 minutes
+// after login, no matter how active they are — this block is what makes
+// it "logged out after 20 minutes of inactivity" instead.
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const refreshedToken = response.headers['x-refreshed-token'];
+    if (refreshedToken) {
+      localStorage.setItem('auth_token', refreshedToken);
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');

@@ -9,37 +9,29 @@ import type {
 
 export const employeeService = {
 
-  async getDashboard(employeeId: string): Promise<EmployeeDashboardData> {
-    const { data } = await apiClient.get<EmployeeDashboardData>('/employee/dashboard', {
-      params: { employeeId },
-    });
+  async getDashboard(): Promise<EmployeeDashboardData> {
+    const { data } = await apiClient.get<EmployeeDashboardData>('/employee/dashboard');
     return data;
   },
 
-  async getMyAppraisals(employeeId: string): Promise<Appraisal[]> {
-    const { data } = await apiClient.get<Appraisal[]>('/employee/appraisals', {
-      params: { employeeId },
-    });
+  async getMyAppraisals(): Promise<Appraisal[]> {
+    const { data } = await apiClient.get<Appraisal[]>('/employee/appraisals');
     return data;
   },
 
-  async getAppraisalById(appraisalId: string, employeeId: string): Promise<Appraisal> {
-    const { data } = await apiClient.get<Appraisal>(`/employee/appraisals/${appraisalId}`, {
-      params: { employeeId },
-    });
+  async getAppraisalById(appraisalId: string): Promise<Appraisal> {
+    const { data } = await apiClient.get<Appraisal>(`/employee/appraisals/${appraisalId}`);
     return data;
   },
 
   // Saves draft without submitting — status stays EMPLOYEE_DRAFT
   async saveSelfAssessmentDraft(
     appraisalId: string,
-    payload: SelfAssessmentRequest,
-    employeeId: string
+    payload: SelfAssessmentRequest
   ): Promise<Appraisal> {
     const { data } = await apiClient.put<Appraisal>(
       `/employee/appraisals/${appraisalId}/draft`,
-      payload,
-      { params: { employeeId } }
+      payload
     );
     return data;
   },
@@ -47,43 +39,36 @@ export const employeeService = {
   // Submits self-assessment — moves status to SELF_SUBMITTED (locks the form)
   async submitSelfAssessment(
     appraisalId: string,
-    payload: SelfAssessmentRequest,
-    employeeId: string
+    payload: SelfAssessmentRequest
   ): Promise<Appraisal> {
     const { data } = await apiClient.post<Appraisal>(
       `/employee/appraisals/${appraisalId}/self-assessment`,
-      payload,
-      { params: { employeeId } }
+      payload
     );
     return data;
   },
 
   // Final step: employee acknowledges an APPROVED appraisal -> ACKNOWLEDGED
-  async acknowledgeAppraisal(appraisalId: string, employeeId: string): Promise<Appraisal> {
+  async acknowledgeAppraisal(appraisalId: string): Promise<Appraisal> {
     const { data } = await apiClient.patch<Appraisal>(
       `/employee/appraisals/${appraisalId}/acknowledge`,
-      null,
-      { params: { employeeId } }
+      null
     );
     return data;
   },
 
-  async getMyGoals(employeeId: string): Promise<Goal[]> {
-    const { data } = await apiClient.get<Goal[]>('/employee/goals', {
-      params: { employeeId },
-    });
+  async getMyGoals(): Promise<Goal[]> {
+    const { data } = await apiClient.get<Goal[]>('/employee/goals');
     return data;
   },
 
   async respondToGoal(
     goalId: string,
-    payload: EmployeeGoalCompletionRequest,
-    employeeId: string
+    payload: EmployeeGoalCompletionRequest
   ): Promise<Goal> {
     const { data } = await apiClient.patch<Goal>(
       `/employee/goals/${goalId}/respond`,
-      payload,
-      { params: { employeeId } }
+      payload
     );
     return data;
   },
