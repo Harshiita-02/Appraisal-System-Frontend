@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Icons } from '@/components/Icons';
+import { NotificationBell } from '@/components/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/employee/guide', label: 'Appraisal Guide', icon: Icons.Clipboard },
@@ -10,6 +11,8 @@ const NAV_ITEMS = [
   { to: '/employee/appraisals', label: 'My Appraisals', icon: Icons.Clipboard },
   { to: '/employee/goals', label: 'My Goals', icon: Icons.Target },
   { to: '/employee/reviews', label: 'My Reviews', icon: Icons.Star },
+  { to: '/employee/notifications', label: 'Notifications', icon: Icons.Bell },
+  
 ];
 
 export function EmployeeLayout() {
@@ -98,13 +101,7 @@ export function EmployeeLayout() {
           >
             {theme === 'dark' ? <Icons.Sun /> : <Icons.Moon />}
           </button>
-          <button
-            aria-label="Notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[rgb(var(--text-secondary))] hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-surface-800"
-          >
-            <Icons.Bell />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-600" />
-          </button>
+          <NotificationBell />
 
           <div className="relative">
             <button

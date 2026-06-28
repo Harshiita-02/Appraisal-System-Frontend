@@ -309,3 +309,15 @@ export interface CycleReport {
   byDepartment: DepartmentReportRow[];
   pendingActions: PendingActionRow[];
 }
+
+// Matches the backend's NotificationType enum (entity/enums/NotificationType.java)
+export type NotificationCategory = 'INFO' | 'WARNING' | 'SUCCESS' | 'APPRAISAL' | 'REVIEW' | 'GOAL';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: NotificationCategory;
+  isRead: boolean;
+  createdAt: string;
+}
