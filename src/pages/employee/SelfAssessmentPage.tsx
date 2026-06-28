@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
 import { employeeService } from '@/services/employeeService';
 import type { Appraisal } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -14,7 +13,6 @@ function formatDate(iso: string): string {
 export function SelfAssessmentPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [appraisal, setAppraisal] = useState<Appraisal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,9 +28,9 @@ export function SelfAssessmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!id || !user) return;
+    if (!id) return;
     employeeService
-      .getAppraisalById(id, user.id)
+      .getAppraisalById(id)
       .then((a) => {
         setAppraisal(a);
         setWhatWentWell(a.whatWentWell ?? '');
@@ -41,12 +39,12 @@ export function SelfAssessmentPage() {
         setSelfRating(a.selfRating ?? 0);
       })
       .finally(() => setIsLoading(false));
-  }, [id, user]);
+  }, [id]);
 
   const isEditable = appraisal?.status === 'PENDING' || appraisal?.status === 'EMPLOYEE_DRAFT';
 
   async function handleSaveDraft() {
-    if (!appraisal || !user) return;
+    if (!appraisal) return;
     setFormError(null);
     setIsSavingDraft(true);
     try {
@@ -57,8 +55,7 @@ export function SelfAssessmentPage() {
           whatToImprove,
           keyAchievements,
           selfRating: selfRating || 1,
-        },
-        user.id
+        }
       );
       setAppraisal(updated);
       setDraftSaved(true);
@@ -71,7 +68,7 @@ export function SelfAssessmentPage() {
   }
 
   async function handleSubmit() {
-    if (!appraisal || !user) return;
+    if (!appraisal) return;
     setFormError(null);
 
     if (!whatWentWell.trim() || !whatToImprove.trim() || !keyAchievements.trim()) {
@@ -92,8 +89,7 @@ export function SelfAssessmentPage() {
           whatToImprove,
           keyAchievements,
           selfRating,
-        },
-        user.id
+        }
       );
       navigate('/employee/appraisals');
     } catch (err) {

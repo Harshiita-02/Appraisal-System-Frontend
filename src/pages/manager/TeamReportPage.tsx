@@ -13,6 +13,7 @@ export function TeamReportPage() {
   const [report, setReport] = useState<TeamReport | null>(null);
   const [isLoadingCycles, setIsLoadingCycles] = useState(true);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [cyclesError, setCyclesError] = useState<string | null>(null);
 
   // Review modal state
   const [reviewTarget, setReviewTarget] = useState<TeamReportRow | null>(null);
@@ -22,11 +23,16 @@ export function TeamReportPage() {
   const [isSavingReview, setIsSavingReview] = useState(false);
 
   useEffect(() => {
-    managerService.getCycles().then((list) => {
-      setCycles(list);
-      if (list.length > 0) setSelectedCycleId(list[0].id);
-      setIsLoadingCycles(false);
-    });
+    managerService
+      .getCycles()
+      .then((list) => {
+        setCycles(list);
+        if (list.length > 0) setSelectedCycleId(list[0].id);
+      })
+      .catch(() => {
+        setCyclesError('Could not load appraisal cycles. Please try again.');
+      })
+      .finally(() => setIsLoadingCycles(false));
   }, []);
 
   useEffect(() => {
@@ -75,9 +81,6 @@ export function TeamReportPage() {
 
     setIsSavingReview(true);
     try {
-      // Uses managerService.reviewTeamAppraisal -> PUT /manager/team-appraisals/{id}/review
-      // with { managerRating, managerComments } — the real, current endpoint,
-      // not the old POST /manager/appraisals/{id}/review with finalComment.
       await managerService.reviewTeamAppraisal(
         reviewTarget.appraisalId,
         { managerRating: managerRating || 1, managerComments },
@@ -96,8 +99,22 @@ export function TeamReportPage() {
 
   if (isLoadingCycles) {
     return (
-      <div className="flex items-center justify-center py-20 text-sm text-[rgb(var(--text-muted))]">
+      <div className="flex min-h-[60vh] items-center justify-center text-sm text-[rgb(var(--text-muted))]">
         Loading…
+      </div>
+    );
+  }
+
+  if (cyclesError) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <p className="text-sm text-red-600 dark:text-red-400">{cyclesError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg border border-[rgb(var(--border-subtle))] px-4 py-2 text-sm font-medium text-[rgb(var(--text-primary))] hover:bg-brand-50 dark:hover:bg-surface-800"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -134,7 +151,7 @@ export function TeamReportPage() {
           Select a cycle to view your team report
         </div>
       ) : isLoadingReport || !report ? (
-        <div className="flex items-center justify-center py-16 text-sm text-[rgb(var(--text-muted))]">
+        <div className="flex min-h-[200px] items-center justify-center py-16 text-sm text-[rgb(var(--text-muted))]">
           Loading report…
         </div>
       ) : (

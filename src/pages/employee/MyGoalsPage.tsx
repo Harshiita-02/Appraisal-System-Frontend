@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { employeeService } from '@/services/employeeService';
 import { GOAL_STATUS_LABELS, type Goal, type GoalStatus } from '@/types';
 import { Modal } from '@/components/Modal';
@@ -22,7 +21,6 @@ function daysUntil(iso: string): number {
 }
 
 export function MyGoalsPage() {
-  const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -33,12 +31,11 @@ export function MyGoalsPage() {
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => { loadData(); }, [user]);
+  useEffect(() => { loadData(); }, []);
 
   function loadData() {
-    if (!user) return;
     setIsLoading(true);
-    employeeService.getMyGoals(user.id).then(setGoals).finally(() => setIsLoading(false));
+    employeeService.getMyGoals().then(setGoals).finally(() => setIsLoading(false));
   }
 
   function openGoalModal(goal: Goal) {
@@ -61,11 +58,11 @@ export function MyGoalsPage() {
 
   // Mark as In Progress — no completion claim, just "I've started"
   async function handleMarkInProgress() {
-    if (!activeGoal || !user) return;
+    if (!activeGoal) return;
     setIsSaving(true);
     setSubmitError(null);
     try {
-      await employeeService.respondToGoal(activeGoal.id, { completed: null, note: note || undefined }, user.id);
+      await employeeService.respondToGoal(activeGoal.id, { completed: null, note: note || undefined });
       closeModal();
       loadData();
     } catch (err) {
@@ -77,11 +74,11 @@ export function MyGoalsPage() {
 
   // Submit a completion claim (yes/no)
   async function handleSubmit() {
-    if (!activeGoal || completed === null || !user) return;
+    if (!activeGoal || completed === null) return;
     setIsSaving(true);
     setSubmitError(null);
     try {
-      await employeeService.respondToGoal(activeGoal.id, { completed, note: note || undefined }, user.id);
+      await employeeService.respondToGoal(activeGoal.id, { completed, note: note || undefined });
       closeModal();
       loadData();
     } catch (err) {

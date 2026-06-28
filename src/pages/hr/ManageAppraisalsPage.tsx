@@ -12,35 +12,8 @@ import {
 import { StatusBadge } from '@/components/StatusBadge';
 import { Modal } from '@/components/Modal';
 import { Icons } from '@/components/Icons';
-
-// Pulls a human-readable message out of an Axios error. Spring's default
-// error body (and most custom @ExceptionHandler responses) is shaped like
-// { message: "...", error: "...", status: 400 } — this checks the common
-// field names backends use and falls back to a generic string only if none
-// of them are present, instead of always discarding the real reason.
-//
-// NOTE: this is duplicated from UsersPage.tsx. Consider moving it to a
-// shared src/utils/errors.ts and importing it in both places.
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const response = (err as { response?: { data?: unknown } }).response;
-    const data = response?.data;
-    if (data && typeof data === 'object') {
-      const body = data as Record<string, unknown>;
-      const candidate = body.message ?? body.error ?? body.detail;
-      if (typeof candidate === 'string' && candidate.trim()) {
-        return candidate;
-      }
-    }
-    if (typeof data === 'string' && data.trim()) {
-      return data;
-    }
-  }
-  if (err instanceof Error && err.message) {
-    return err.message;
-  }
-  return fallback;
-}
+import { AppraisalDetailsModal } from '@/components/AppraisalDetailModal';
+import { extractErrorMessage } from '@/utils/errors';
 
 export function ManageAppraisalsPage() {
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
@@ -54,6 +27,7 @@ export function ManageAppraisalsPage() {
   const [cycleFilter, setCycleFilter] = useState<string>('ALL');
 
   const [deleteTarget, setDeleteTarget] = useState<Appraisal | null>(null);
+  const [viewTarget, setViewTarget] = useState<Appraisal | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Tracks which appraisal rows currently have an advance request in
@@ -276,6 +250,12 @@ export function ManageAppraisalsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <button
+                            onClick={() => setViewTarget(a)}
+                            className="rounded-lg border border-[rgb(var(--border-subtle))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--text-primary))] hover:border-brand-400 hover:text-brand-600"
+                          >
+                            View
+                          </button>
+                          <button
                             onClick={() => handleAdvance(a)}
                             disabled={!canAdvance || isAdvancing}
                             title={
@@ -332,6 +312,8 @@ export function ManageAppraisalsPage() {
           </button>
         </div>
       </Modal>
+
+      <AppraisalDetailsModal appraisal={viewTarget} onClose={() => setViewTarget(null)} />
     </div>
   );
 }

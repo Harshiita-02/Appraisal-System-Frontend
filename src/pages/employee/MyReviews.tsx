@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { employeeService } from '@/services/employeeService';
 import type { Appraisal } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -130,17 +129,15 @@ function ReviewCard({ appraisal }: { appraisal: Appraisal }) {
 }
 
 export function MyReviewsPage() {
-  const { user } = useAuth();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
     employeeService
-      .getMyAppraisals(user.id)
+      .getMyAppraisals()
       .then(setAppraisals)
       .finally(() => setIsLoading(false));
-  }, [user]);
+  }, []);
 
   if (isLoading) {
     return (

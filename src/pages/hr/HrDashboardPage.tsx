@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { hrService } from '../../services/hrService';
 import type { Appraisal, AppraisalStatus, DashboardData } from '@/types';
 import { StatCard } from '@/components/StatCard';
 import { StatusBadge } from '@/components/StatusBadge';
+import { AppraisalDetailsModal } from '@/components/AppraisalDetailModal';
 
 const STATUS_OPTIONS: { value: AppraisalStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'All statuses' },
@@ -30,6 +30,7 @@ export function HrDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<AppraisalStatus | 'ALL'>('ALL');
   const [departmentFilter, setDepartmentFilter] = useState<string>('ALL');
   const [cycleFilter, setCycleFilter] = useState<string>('ALL');
+  const [viewTarget, setViewTarget] = useState<Appraisal | null>(null);
 
   useEffect(() => {
     hrService
@@ -194,12 +195,12 @@ export function HrDashboardPage() {
                       {formatDate(a.createdAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        to={`/hr/appraisals/${a.id}`}
+                      <button
+                        onClick={() => setViewTarget(a)}
                         className="rounded-lg border border-[rgb(var(--border-subtle))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--text-primary))] hover:border-brand-400 hover:text-brand-600"
                       >
                         View
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -208,6 +209,8 @@ export function HrDashboardPage() {
           </div>
         )}
       </div>
+
+      <AppraisalDetailsModal appraisal={viewTarget} onClose={() => setViewTarget(null)} />
     </div>
   );
 }

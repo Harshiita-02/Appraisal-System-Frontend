@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
 import { employeeService } from '@/services/employeeService';
 import { APPRAISAL_STATUS_LABELS, type Appraisal, type AppraisalStatus, type Cycle } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -23,7 +22,6 @@ function formatDate(iso: string): string {
 }
 
 export function MyAppraisalsPage() {
-  const { user } = useAuth();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,12 +29,11 @@ export function MyAppraisalsPage() {
   const [cycleFilter, setCycleFilter] = useState<string>('ALL');
 
   useEffect(() => {
-    if (!user) return;
     employeeService
-      .getMyAppraisals(user.id)
+      .getMyAppraisals()
       .then(setAppraisals)
       .finally(() => setIsLoading(false));
-  }, [user]);
+  }, []);
 
   const cycles: Cycle[] = useMemo(() => {
     const seen = new Map<string, Cycle>();

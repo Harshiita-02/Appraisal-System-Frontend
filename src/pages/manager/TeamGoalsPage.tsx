@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { isAxiosError } from 'axios';
 import { managerService } from '@/services/managerService';
 import { GOAL_STATUS_LABELS, type Appraisal, type Goal, type GoalRequest, type GoalStatus } from '@/types';
 import { Modal } from '@/components/Modal';
@@ -84,8 +85,9 @@ export function TeamGoalsPage() {
       setSuccessMessage('Goal created');
       loadData();
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch {
-      setFormError('Something went wrong saving this goal. Please try again.');
+    } catch (err) {
+      const backendMessage = isAxiosError(err) ? err.response?.data?.message : undefined;
+      setFormError(backendMessage ?? 'Something went wrong saving this goal. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -124,9 +126,8 @@ export function TeamGoalsPage() {
       closeConfirmModal();
       loadData();
     } catch (err) {
-      setConfirmError(
-        err instanceof Error ? err.message : 'Could not confirm this goal. Please try again.'
-      );
+      const backendMessage = isAxiosError(err) ? err.response?.data?.message : undefined;
+      setConfirmError(backendMessage ?? 'Could not confirm this goal. Please try again.');
     } finally {
       setIsConfirming(false);
     }
@@ -134,7 +135,7 @@ export function TeamGoalsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20 text-sm text-[rgb(var(--text-muted))]">
+      <div className="flex min-h-[60vh] items-center justify-center text-sm text-[rgb(var(--text-muted))]">
         Loading goals…
       </div>
     );
