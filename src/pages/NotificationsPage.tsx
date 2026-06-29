@@ -2,26 +2,8 @@ import { useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { notificationService } from '@/services/notificationService';
 import { useNotifications } from '@/context/NotificationContext';
-import type { AppNotification, NotificationCategory } from '@/types';
+import type { AppNotification } from '@/types';
 import { Icons } from '@/components/Icons';
-
-const TYPE_DOT_COLOR: Record<NotificationCategory, string> = {
-  INFO: 'bg-sky-500',
-  WARNING: 'bg-amber-500',
-  SUCCESS: 'bg-emerald-500',
-  APPRAISAL: 'bg-violet-500',
-  REVIEW: 'bg-brand-500',
-  GOAL: 'bg-pink-500',
-};
-
-const TYPE_LABELS: Record<NotificationCategory, string> = {
-  INFO: 'Info',
-  WARNING: 'Warning',
-  SUCCESS: 'Success',
-  APPRAISAL: 'Appraisal',
-  REVIEW: 'Review',
-  GOAL: 'Goal',
-};
 
 type ReadFilter = 'ALL' | 'UNREAD' | 'READ';
 
@@ -35,13 +17,29 @@ function formatDateTime(iso: string): string {
   });
 }
 
+/**
+ * Full notification history — every notification the user has ever
+ * received, read or unread, unlike NotificationBell's dropdown which
+ * only shows a quick unread-focused glance. Shared across HR, Manager,
+ * and Employee sidebars since the underlying data and behavior are
+ * identical for every role (each user only ever sees their own
+ * notifications, scoped server-side via AuthenticatedUser).
+ *
+ * Mark-read actions go through NotificationContext (markAsRead /
+ * markAllAsRead) rather than calling notificationService directly, so
+ * the bell's badge count updates immediately — both components read
+ * the same shared count instead of each holding their own stale copy.
+ *
+ * No type filter or color-coded dots — with only a handful of
+ * notification categories in practice, a dedicated filter for them
+ * adds noise without enough variety to be useful yet.
+ */
 export function NotificationsPage() {
   const { markAsRead, markAllAsRead } = useNotifications();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<ReadFilter>('ALL');
-  const [typeFilter, setTypeFilter] = useState<NotificationCategory | 'ALL'>('ALL');
 
   useEffect(() => {
     loadData();
@@ -86,7 +84,6 @@ export function NotificationsPage() {
   const filtered = notifications.filter((n) => {
     if (filter === 'UNREAD' && n.isRead) return false;
     if (filter === 'READ' && !n.isRead) return false;
-    if (typeFilter !== 'ALL' && n.type !== typeFilter) return false;
     return true;
   });
 
@@ -138,19 +135,6 @@ export function NotificationsPage() {
           <option value="UNREAD">Unread</option>
           <option value="READ">Read</option>
         </select>
-
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as NotificationCategory | 'ALL')}
-          className="rounded-lg border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] px-3 py-1.5 text-sm text-[rgb(var(--text-primary))] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-        >
-          <option value="ALL">All types</option>
-          {Object.entries(TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="rounded-xl border border-[rgb(var(--border-subtle))] bg-[rgb(var(--bg-card))] shadow-card">
@@ -158,7 +142,7 @@ export function NotificationsPage() {
           <div className="p-10 text-center text-sm text-[rgb(var(--text-muted))]">
             {notifications.length === 0
               ? 'No notifications yet.'
-              : 'No notifications match your filters.'}
+              : 'No notifications match your filter.'}
           </div>
         ) : (
           <ul className="divide-y divide-[rgb(var(--border-subtle))]">
@@ -173,9 +157,6 @@ export function NotificationsPage() {
                       : 'cursor-pointer bg-brand-50/30 hover:bg-brand-50/60 dark:bg-brand-900/10 dark:hover:bg-brand-900/20'
                   }`}
                 >
-                  <span
-                    className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${TYPE_DOT_COLOR[n.type]} ${n.isRead ? 'opacity-30' : ''}`}
-                  />
                   <span className="flex-1">
                     <span className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-[rgb(var(--text-primary))]">

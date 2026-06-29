@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import { notificationService } from '@/services/notificationService';
 import { useNotifications } from '@/context/NotificationContext';
-import type { AppNotification, NotificationCategory } from '@/types';
+import type { AppNotification } from '@/types';
 import { Icons } from '@/components/Icons';
 
 function getNotificationsPath(pathname: string): string {
@@ -11,15 +11,6 @@ function getNotificationsPath(pathname: string): string {
   if (pathname.startsWith('/manager')) return '/manager/notifications';
   return '/employee/notifications';
 }
-
-const TYPE_DOT_COLOR: Record<NotificationCategory, string> = {
-  INFO: 'bg-sky-500',
-  WARNING: 'bg-amber-500',
-  SUCCESS: 'bg-emerald-500',
-  APPRAISAL: 'bg-violet-500',
-  REVIEW: 'bg-brand-500',
-  GOAL: 'bg-pink-500',
-};
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -140,7 +131,6 @@ export function NotificationBell() {
                     onClick={() => handleNotificationClick(n)}
                     className="flex w-full items-start gap-2.5 bg-brand-50/30 px-4 py-3 text-left transition-colors hover:bg-brand-50/60 dark:bg-brand-900/10 dark:hover:bg-brand-900/20"
                   >
-                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${TYPE_DOT_COLOR[n.type]}`} />
                     <span className="flex-1">
                       <span className="block text-sm font-medium text-[rgb(var(--text-primary))]">
                         {n.title}
