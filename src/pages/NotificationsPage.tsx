@@ -7,8 +7,22 @@ import { Icons } from '@/components/Icons';
 
 type ReadFilter = 'ALL' | 'UNREAD' | 'READ';
 
+/**
+ * BUG FIX: Safe cross-browser date parsing.
+ *
+ * The backend previously sent "yyyy-MM-dd HH:mm:ss" which breaks in
+ * Safari/Firefox (they require the ISO 'T' separator). The backend is now
+ * fixed to send "yyyy-MM-dd'T'HH:mm:ss", but we also normalise here as a
+ * defence-in-depth measure against stale cached data or any future regression.
+ */
+function safeDate(iso: string): Date {
+  return new Date(iso.replace(' ', 'T'));
+}
+
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', {
+  const date = safeDate(iso);
+  if (isNaN(date.getTime())) return 'Unknown date';
+  return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -29,10 +43,6 @@ function formatDateTime(iso: string): string {
  * markAllAsRead) rather than calling notificationService directly, so
  * the bell's badge count updates immediately — both components read
  * the same shared count instead of each holding their own stale copy.
- *
- * No type filter or color-coded dots — with only a handful of
- * notification categories in practice, a dedicated filter for them
- * adds noise without enough variety to be useful yet.
  */
 export function NotificationsPage() {
   const { markAsRead, markAllAsRead } = useNotifications();
@@ -60,14 +70,21 @@ export function NotificationsPage() {
 
   async function handleMarkRead(notification: AppNotification) {
     if (notification.isRead) return;
-    try {
-      await markAsRead(notification);
+    /**
+     * BUG FIX: Use the updated notification returned from context's markAsRead
+     * (which now returns AppNotification | null) to update the local list in
+     * place. Previously this called markAsRead and then manually set isRead:true
+     * on the local copy regardless of whether the API call succeeded. Now if
+     * the API call fails (null return), the item stays unread in the UI —
+     * consistent with actual server state.
+     */
+    const updated = await markAsRead(notification);
+    if (updated !== null) {
       setNotifications((prev) =>
         prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
       );
-    } catch (err) {
-      const backendMessage = isAxiosError(err) ? err.response?.data?.message : undefined;
-      setError(backendMessage ?? 'Could not mark this notification as read.');
+    } else {
+      setError('Could not mark this notification as read. Please try again.');
     }
   }
 
@@ -76,7 +93,7 @@ export function NotificationsPage() {
       await markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (err) {
-      const backendMessage = isAxiosError(err) ? err.response?.data?.message : undefined;
+      const backendMessage = isAxiosError(err) ? (err as any).response?.data?.message : undefined;
       setError(backendMessage ?? 'Could not mark all notifications as read.');
     }
   }

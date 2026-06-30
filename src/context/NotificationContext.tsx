@@ -7,12 +7,12 @@ interface NotificationContextValue {
   unreadCount: number;
   /** Refetches just the unread count from the backend. */
   refreshUnreadCount: () => void;
-  /** Marks one notification read everywhere it's displayed (bell panel
-   *  and the full NotificationsPage), and decrements the shared count
-   *  immediately — no waiting on the next poll. */
-  markAsRead: (notification: AppNotification) => Promise<void>;
-  /** Marks every notification read everywhere, and zeroes the shared
-   *  count immediately. */
+  /**
+   * Marks one notification read and decrements the shared count immediately.
+   * Returns the updated notification so callers can update their local list.
+   */
+  markAsRead: (notification: AppNotification) => Promise<AppNotification | null>;
+  /** Marks every notification read and zeroes the shared count immediately. */
   markAllAsRead: () => Promise<void>;
 }
 
@@ -20,14 +20,18 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 
 /**
  * Single shared source of truth for the unread notification count.
- * Previously NotificationBell and NotificationsPage each held their
- * own separate local state — marking something read on one had no
- * effect on the other until the bell's next 60s background poll fired,
- * so the badge could sit stale and inconsistent with what the page
- * showed. Wrapping both in this provider means a mark-read action from
- * EITHER component updates the count everywhere immediately, the same
- * way AuthContext/ThemeContext are the one shared source for their
- * respective concerns.
+ *
+ * Previously NotificationBell and NotificationsPage each held their own
+ * separate local state — marking something read in one had no effect on
+ * the other until the bell's next 60 s background poll fired, so the
+ * badge could sit stale and inconsistent with what the page showed.
+ *
+ * Wrapping both in this provider means a mark-read action from EITHER
+ * component updates the count everywhere immediately.
+ *
+ * BUG FIX: markAsRead now returns the updated AppNotification (or null on
+ * error) so the caller can update its own local list in place, rather than
+ * doing a full re-fetch just to flip one isRead flag.
  */
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -50,14 +54,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       return;
     }
     refreshUnreadCount();
-    const interval = setInterval(refreshUnreadCount, 60000);
+    const interval = setInterval(refreshUnreadCount, 60_000);
     return () => clearInterval(interval);
   }, [user, refreshUnreadCount]);
 
-  async function markAsRead(notification: AppNotification) {
-    if (notification.isRead) return;
-    await notificationService.markAsRead(notification.id);
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+  async function markAsRead(notification: AppNotification): Promise<AppNotification | null> {
+    if (notification.isRead) return notification;
+    try {
+      const updated = await notificationService.markAsRead(notification.id);
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      return updated;
+    } catch {
+      return null;
+    }
   }
 
   async function markAllAsRead() {

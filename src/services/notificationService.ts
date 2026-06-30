@@ -21,7 +21,18 @@ export const notificationService = {
     return data.unreadCount;
   },
 
-  async markAsRead(notificationId: string): Promise<AppNotification> {
+  /**
+   * BUG FIX: Parameter type changed from string to number.
+   *
+   * AppNotification.id is now typed as number (matching the backend Long),
+   * so the parameter must accept number, not string. The URL template
+   * literal handles the number→string coercion automatically.
+   *
+   * The returned object is typed as AppNotification, but the backend
+   * returns NotificationResponse which has the same shape — the mapping
+   * is 1:1 so no separate response type is needed here.
+   */
+  async markAsRead(notificationId: number): Promise<AppNotification> {
     const { data } = await apiClient.patch<AppNotification>(`/notifications/${notificationId}/read`);
     return data;
   },

@@ -313,11 +313,26 @@ export interface CycleReport {
 // Matches the backend's NotificationType enum (entity/enums/NotificationType.java)
 export type NotificationCategory = 'INFO' | 'WARNING' | 'SUCCESS' | 'APPRAISAL' | 'REVIEW' | 'GOAL';
 
+/**
+ * BUG FIX: id changed from string to number.
+ *
+ * The backend's Notification entity uses a Long primary key, which Jackson
+ * serialises as a JSON number (e.g. 42), not a quoted string (e.g. "42").
+ * Typing id as string meant TypeScript silently accepted the mismatch, but
+ * at runtime notificationService.markAsRead(n.id) was constructing URLs like
+ * /notifications/42/read correctly only by accident (JS coerces number→string
+ * in template literals). The real risk is any strict equality check
+ * (n.id === someStringId) silently failing.
+ *
+ * Keeping it as number matches the wire format exactly and removes the
+ * coercion reliance. The URL template literal `${notificationId}` still
+ * works fine with a number.
+ */
 export interface AppNotification {
-  id: string;
+  id: number;
   title: string;
   message: string;
   type: NotificationCategory;
   isRead: boolean;
-  createdAt: string;
+  createdAt: string; // ISO 8601 string: "2024-01-15T10:30:00" (fixed in backend)
 }

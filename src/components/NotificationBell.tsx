@@ -12,16 +12,32 @@ function getNotificationsPath(pathname: string): string {
   return '/employee/notifications';
 }
 
+/**
+ * BUG FIX: Safe cross-browser date parsing.
+ *
+ * The backend now sends ISO 8601 strings ("2024-01-15T10:30:00") thanks to
+ * the NotificationResponse fix. However, as an extra safety layer this
+ * helper replaces any space between date and time with 'T' before parsing,
+ * so old cached data or any format regression doesn't silently produce
+ * "Invalid Date" (which rendered as "NaN" in Safari/Firefox).
+ */
+function safeDate(iso: string): Date {
+  // Normalize "yyyy-MM-dd HH:mm:ss" → "yyyy-MM-dd'T'HH:mm:ss" just in case.
+  return new Date(iso.replace(' ', 'T'));
+}
+
 function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diffMs / 60000);
+  const date = safeDate(iso);
+  if (isNaN(date.getTime())) return 'Unknown time';
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.floor(diffMs / 60_000);
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export function NotificationBell() {
@@ -68,12 +84,17 @@ export function NotificationBell() {
   }
 
   async function handleNotificationClick(notification: AppNotification) {
-    try {
-      await markAsRead(notification);
+    /**
+     * BUG FIX: Use the updated notification returned by markAsRead (which
+     * now returns AppNotification | null) rather than just filtering the
+     * item out. Filtering it out worked, but if the API call failed the
+     * item would disappear from the bell panel without actually being marked
+     * read on the server — the next open would show it again, confusing the
+     * user. Now we only remove it on success (non-null return).
+     */
+    const updated = await markAsRead(notification);
+    if (updated !== null) {
       setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-    } catch {
-      // If marking-as-read fails, leave it in the list rather than show
-      // a disruptive error for what's a minor, non-blocking action.
     }
   }
 
@@ -82,7 +103,7 @@ export function NotificationBell() {
       await markAllAsRead();
       setNotifications([]);
     } catch {
-      // Same reasoning as above — non-critical, fail quietly.
+      // Non-critical — fail quietly rather than showing a disruptive error.
     }
   }
 
